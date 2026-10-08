@@ -34,4 +34,4 @@ A working local flow for English and pt-BR: read the latest assistant response, 
 
 ## Repository status
 
-Planning repository. The existing `pi-speak` work informed this direction; implementation has not been copied into this repository yet. The intent is to design a clean, harness-agnostic core rather than carry over Pi-specific APIs.
+Planning repository. See [docs/PLAN.md](docs/PLAN.md) for the detailed plan: harness adapters, markdown-aware reading, terminal UI, configurable keymaps, and milestones. The existing `pi-speak` work informed this direction; implementation has not been copied into this repository yet.
