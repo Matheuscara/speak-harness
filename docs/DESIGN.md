@@ -20,7 +20,7 @@ flowchart LR
     SOCK[Control socket] --> CMD
     CFG[Config + watcher] --> MD & LANG & UI & CMD
   end
-  ENG <-->|JSON lines| W[TTS worker<br/>Node · Kokoro · eSpeak-NG]
+  ENG <-->|JSON lines| W[TTS worker · Node<br/>Kokoro · Piper · eSpeak-NG]
   OUT --> P[pw-play · paplay · aplay · afplay]
   CTL[speakh ctl] --> SOCK
 ```
@@ -43,7 +43,7 @@ src/
     config/       schema, load, watch, write
   adapters/       omp, pi, codex, claude-code, (shared jsonl tail)
   capture/        PTY spawn + screen text extraction (wrap mode)
-  engine/         client, worker (Node), kokoro, phonemizers
+  engine/         client, worker (Node), engines (kokoro, piper), phonemizer, voice catalog
   audio/          player discovery, wav writing
   control/        unix socket server + client
   tui/            OpenTUI app, screens, keymap wiring
@@ -148,23 +148,109 @@ Detection runs per block, not per message:
 3. Undetermined or short blocks inherit the previous block's language; the first block inherits the message's dominant language (detected on the whole text).
 4. Hysteresis: a block switches language only if the score gap clears a threshold, so one English term inside Portuguese does not flip the voice.
 
-Voice resolution: `voiceOverride` (from `voice-primary`/`voice-alternate`) → language map in config → primary voice.
+Voice resolution: `voiceOverride` (from `voice-primary`/`voice-alternate`) → language map in config → primary voice. Voices are addressed as `engine:voice` (`kokoro:af_heart`, `piper:pt_BR-faber-medium`), so one message can mix engines per paragraph.
 
-## Engine protocol
+## Speech engines
 
-Bun ↔ Node worker over stdio JSON lines (binary audio as base64; v1 measured fine for 24 kHz mono chunks):
+Engines are interchangeable behind one interface and run inside the TTS worker. The app side only knows voice ids.
 
-```text
-→ {"id":1,"op":"prepare"}
-← {"id":1,"ok":true}
-→ {"id":2,"op":"synthesize","text":"…","voice":"pf_dora","lang":"pt-BR","speed":1.0}
-← {"id":2,"ok":true,"sampleRate":24000,"pcm":"<base64 f32>"}
-→ {"id":3,"op":"cancel","target":2}
+```ts
+interface VoiceInfo {
+  id: string;               // "piper:pt_BR-faber-medium"
+  engine: "kokoro" | "piper";
+  lang: "en" | "pt-BR";
+  label: string;
+  sizeBytes: number;
+  installed: boolean;
+  license: string;          // model/dataset license shown before download
+}
+
+interface SpeechEngine {
+  id: VoiceInfo["engine"];
+  voices(): VoiceInfo[];
+  install(voice: string, onProgress: (done: number, total: number) => void): Promise<void>;
+  synthesize(req: { text: string; voice: string; lang: string; speed: number }, signal: AbortSignal):
+    Promise<{ sampleRate: number; pcm: Float32Array }>;
+}
 ```
 
-- English voices: kokoro-js `generate`. pt-BR voices: eSpeak-NG (`ephone`, `pt-BR`) → tokenizer → `generate_from_ids`.
-- Model download is explicit, shows progress, and is cached in the Hugging Face cache.
+### Defaults (v1)
+
+| Language | Default | Alternatives |
+| --- | --- | --- |
+| en | `kokoro:af_heart` | other Kokoro English voices; Piper English voices work through the same path |
+| pt-BR | `piper:pt_BR-faber-medium` | `piper:pt_BR-cadu-medium`, `piper:pt_BR-jeff-medium`, `kokoro:pf_dora`, `kokoro:pm_alex` |
+
+Kokoro stays the English default for quality. Piper is the pt-BR default: its voices are trained on Brazilian Portuguese datasets, and it synthesizes ~8× faster than Kokoro on pt-BR (measurement below). The pt-BR default is confirmed by a listening test with the user before M1 ships.
+
+### Shared phonemizer
+
+One `ephone` instance (eSpeak-NG 1.52 compiled to WASM) in the worker, loaded lazily per language pack. Both engines consume its IPA:
+
+- Kokoro English uses kokoro-js's own phonemizer (`generate`).
+- Kokoro pt-BR: `ephone` IPA → Kokoro tokenizer → `generate_from_ids`.
+- Piper (any language): `ephone` IPA → Piper phoneme ids.
+
+`ephone` output for pt-BR matched system `espeak-ng 1.52` on the test sentence except for palatalization marks (`siʲ`), which Piper's id map does not depend on. `textToIpaWithSourceMap` also maps IPA back to source text, which enables word-level highlight later.
+
+### Piper engine
+
+Implemented from the model format, without Piper's GPL runtime or Python:
+
+1. Phonemize one sentence; keep the clause terminator (`,` `.` `?` `!`).
+2. NFD-decompose to codepoints; ids = `^ _` + (`id(p) _` for each phoneme) + `$` using the voice's `phoneme_id_map`. Unknown phonemes are dropped and reported once.
+3. ONNX inputs: `input` int64 `[1, n]`, `input_lengths` `[n]`, `scales` float32 `[noise_scale, length_scale / speed, noise_w]` from the voice config; `sid` only for multi-speaker voices.
+4. Output float audio at the voice's sample rate (22.05 kHz for medium), peak-normalized.
+
+Voices are downloaded on demand from `rhasspy/piper-voices` on Hugging Face into `$XDG_CACHE_HOME/speak-harness/piper/` (`.onnx` + `.onnx.json`, ~63 MB each), with size and license shown first. Sessions are created lazily per voice and kept while used.
+
+### Kokoro engine
+
+kokoro-js, model `onnx-community/Kokoro-82M-v1.0-ONNX` q4 on CPU, downloaded once (~90 MB). English through `generate`; pt-BR through the shared phonemizer and `generate_from_ids`.
+
+### Measured (M0 latency spike, done)
+
+Node 22 worker, CPU, three pt-BR sentences of 85–90 characters (~5 s of audio each):
+
+| Voice | Model load | Synthesis per sentence | Real-time factor |
+| --- | --- | --- | --- |
+| `piper:pt_BR-faber-medium` | 1.0 s | 227–273 ms | ~0.05 |
+| `piper:pt_BR-cadu-medium` | 0.7 s | 255–301 ms | ~0.05 |
+| `piper:pt_BR-jeff-medium` | 0.7 s | 256–325 ms | ~0.05 |
+| `kokoro:pf_dora` | 0.9 s | 2053–2129 ms | ~0.40 |
+| `kokoro:pm_alex` | 0.9 s | 1982–2201 ms | ~0.40 |
+
+No phonemes were missing from any Piper id map. `ephone` loads in 0.15 s.
+
+### Worker protocol
+
+Bun ↔ Node worker over stdio JSON lines (audio as base64 float32; fine for mono speech chunks):
+
+```text
+→ {"id":1,"op":"voices"}
+← {"id":1,"ok":true,"voices":[…]}
+→ {"id":2,"op":"install","voice":"piper:pt_BR-faber-medium"}
+← {"id":2,"progress":[31457280,63201294]}
+← {"id":2,"ok":true}
+→ {"id":3,"op":"synthesize","text":"…","voice":"piper:pt_BR-faber-medium","lang":"pt-BR","speed":1.0}
+← {"id":3,"ok":true,"sampleRate":22050,"pcm":"<base64 f32>"}
+→ {"id":4,"op":"cancel","target":3}
+```
+
+- Each audio chunk carries its own sample rate; playback writes one WAV per chunk, so mixed 24 kHz (Kokoro) and 22.05 kHz (Piper) segments need no resampling.
 - Worker crash → pending requests fail with a visible error; next request restarts the worker.
+
+### Licenses
+
+| Component | License |
+| --- | --- |
+| kokoro-js, Kokoro-82M weights | Apache-2.0 |
+| onnxruntime-node | MIT |
+| `ephone` (eSpeak-NG) | GPL-3.0-or-later |
+| Piper pt-BR voices faber, cadu, jeff | datasets CC0 (model cards) |
+| Piper runtime (`piper1-gpl`) | GPL-3.0 — not used; only the model format is implemented |
+
+SpeakHarness code stays MIT. Distributions that include the worker with `ephone` are covered by GPL-3.0 as a combined work; the README states this.
 
 ## Playback controller
 
@@ -216,14 +302,14 @@ The OMP/Pi extension bridge is a few lines calling the same socket from a harnes
 
 ```toml
 [voices]
-primary = "af_heart"
-alternate = "pf_dora"
+primary = "kokoro:af_heart"
+alternate = "kokoro:pf_dora"
 auto_language = true
 speed = 1.0
 
 [voices.languages]
-en = "af_heart"
-"pt-BR" = "pf_dora"
+en = "kokoro:af_heart"
+"pt-BR" = "piper:pt_BR-faber-medium"
 
 [reading]
 auto_read = false
@@ -266,13 +352,13 @@ TTL = "T T L"
 | Playback | State-machine tests with a fake engine and fake player (cancel, pause, look-ahead) |
 | Commands/keymap | Every default binding resolves; conflicts detected; ctl dispatch |
 | TUI | In-memory renderer snapshots and interaction tests |
-| Engine | Manual smoke script (real model, real audio) per release, documented |
+| Engines | Piper phoneme→id golden tests against a real voice config; voice-id resolution across engines; manual smoke script (real models, real audio) per release |
 
 ## Spikes before building (M0)
 
 1. **Highlight**: can OpenTUI's markdown component style an arbitrary source range, or do we render blocks ourselves?
 2. **Wrap mode**: `Bun.spawn` with `terminal` + `EmbeddedTerminalRenderable`: input passthrough, resize, prefix key.
-3. **Latency**: first-audio time and real-time factor of Kokoro q4 in the Node worker for EN and pt-BR segments on CPU.
+3. **Latency**: done; see "Measured" under Speech engines. Remaining: listening test for the pt-BR default.
 
 ## Risks
 
@@ -280,6 +366,7 @@ TTL = "T T L"
 | --- | --- |
 | Harness transcript formats change | Small adapters, fixtures, failure isolation |
 | Short / mixed-language text misdetected | Block-level detection, inheritance, hysteresis, manual override |
-| pt-BR quality depends on eSpeak-NG phonemes | Lexicon for technical terms; engine interface allows other engines later |
+| pt-BR quality depends on eSpeak-NG phonemes | Two pt-BR engines, user lexicon for technical terms, listening test before defaults ship |
+| Piper project maintenance (seeking maintainers) | Only the stable ONNX model format is used; models are cached locally |
 | OpenTUI requires Bun ≥ 1.3.14 (Node needs ≥ 26 + FFI) | Ship with Bun; Nix flake pins it |
 | Capture boundaries are heuristic | Capture only as fallback; adapters first |

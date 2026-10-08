@@ -20,9 +20,9 @@ It is local-first: detection, synthesis, and playback run on your machine.
 | Runtime | Bun ≥ 1.3.14 for the app; Node ≥ 22 subprocess for TTS inference |
 | Code blocks | **Announced, never read**: "TypeScript code block, 12 lines" |
 | Languages (v1) | English and Brazilian Portuguese, detected per paragraph |
-| TTS engine (v1) | Kokoro-82M, local; pt-BR through eSpeak-NG phonemization |
+| TTS engines (v1) | Interchangeable, local. **Kokoro** for English (`af_heart`); **Piper** for pt-BR (`faber`, pending listening test), Kokoro pt voices as alternatives |
 | Config | TOML at `~/.config/speak-harness/config.toml`, editable in the UI |
-| License | MIT |
+| License | MIT for SpeakHarness code; the eSpeak-NG phonemizer is GPL-3.0 (see DESIGN.md, Licenses) |
 
 ## Ways to use it
 
@@ -115,8 +115,8 @@ Multi-key sequences (`g g`) and a leader key are supported through `@opentui/key
 
 | # | Milestone | Done when |
 | --- | --- | --- |
-| M0 | **Spikes** — OpenTUI markdown highlight, Bun PTY + embedded terminal, Kokoro latency in a subprocess | Each spike answers its question with a runnable script |
-| M1 | **Speech core + `speakh say`** — markdown → speech script, per-paragraph language, Kokoro engine, chunked playback | A long mixed EN/PT markdown answer is read naturally with the correct voices, code blocks announced |
+| M0 | **Spikes** — OpenTUI markdown highlight, Bun PTY + embedded terminal, engine latency (done: Piper pt-BR ~8× faster than Kokoro) + pt-BR listening test | Each spike answers its question with a runnable script or measurement |
+| M1 | **Speech core + `speakh say`** — markdown → speech script, per-paragraph language, Kokoro + Piper engines, voice download, chunked playback | A long mixed EN/PT markdown answer is read naturally, English by Kokoro and Portuguese by Piper, code blocks announced |
 | M2 | **Harness adapters + `speakh follow`** — OMP, Codex, Claude Code, Pi | New answers from each harness are spoken when finished; fixture tests per adapter |
 | M3 | **Reader TUI** — reader, messages, sessions, status line, highlight | Navigate and read any answer of the current session from the TUI |
 | M4 | **Keymap + settings** — config file, settings screen, keymap editor, help | Every command remappable from UI and file; conflicts reported |
