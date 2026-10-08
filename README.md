@@ -34,4 +34,4 @@ A working local flow for English and pt-BR: read the latest assistant response, 
 
 ## Repository status
 
-Planning repository. See [docs/PLAN.md](docs/PLAN.md) for the detailed plan: harness adapters, markdown-aware reading, terminal UI, configurable keymaps, and milestones. The existing `pi-speak` work informed this direction; implementation has not been copied into this repository yet.
+Planning repository. See [docs/PLAN.md](docs/PLAN.md) for the product plan (usage modes, study mode, markdown reading, keymap, milestones) and [docs/DESIGN.md](docs/DESIGN.md) for the technical design (adapters, speech script, language detection, engine protocol, OpenTUI composition). The existing `pi-speak` work informed this direction; implementation has not been copied into this repository yet.

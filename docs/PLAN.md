@@ -1,197 +1,137 @@
-# SpeakHarness — project plan
+# SpeakHarness — product plan
 
-## Goal
+Technical design: [DESIGN.md](DESIGN.md).
 
-A terminal app that reads the responses of any AI coding harness aloud, in the right voice for the language, without reading markdown syntax literally. It runs next to the harness (for example in a tmux split), shows the response being read, and lets the user configure keymaps, voices, and reading rules.
+## Why
 
-## User experience
+AI coding harnesses (OMP, Pi, Codex, Claude Code…) answer in long markdown. SpeakHarness reads those answers aloud while you keep reading them, so you can:
+
+- **Study a language** — listen and read at the same time, repeat a sentence, slow it down, save phrases.
+- **Rest your eyes** — follow a long explanation by ear.
+- **Hear it right** — the voice matches the language of each paragraph, and markdown is spoken as structure, never as symbols.
+
+It is local-first: detection, synthesis, and playback run on your machine.
+
+## Decisions
+
+| Topic | Decision |
+| --- | --- |
+| UI | Terminal UI built with **OpenTUI** (`@opentui/core` + `@opentui/keymap`) |
+| Runtime | Bun ≥ 1.3.14 for the app; Node ≥ 22 subprocess for TTS inference |
+| Code blocks | **Announced, never read**: "TypeScript code block, 12 lines" |
+| Languages (v1) | English and Brazilian Portuguese, detected per paragraph |
+| TTS engine (v1) | Kokoro-82M, local; pt-BR through eSpeak-NG phonemization |
+| Config | TOML at `~/.config/speak-harness/config.toml`, editable in the UI |
+| License | MIT |
+
+## Ways to use it
+
+### 1. Side panel — `speakh`
+
+Run it next to any harness (tmux split, second terminal). It finds the harness session for the current directory and follows its answers.
 
 ```text
-┌──────────────── harness (OMP, Codex, Claude Code…) ─────────────┐┌──────── SpeakHarness ─────────┐
-│ > explain the TTL change                                        ││ ● omp  ~/developer/vitrum      │
-│                                                                 ││ ──────────────────────────────│
-│ ## What is this task about?                                     ││ What is this task about?      │
-│ Developers use the **application's database user**…             ││ ▶ Developers use the          │
-│ - **Temporary:** the credential has a TTL                       ││   application's database user │
-│                                                                 ││ ──────────────────────────────│
-│                                                                 ││ en · af_heart · 1.0x · 2/7    │
-└─────────────────────────────────────────────────────────────────┘└───────────────────────────────┘
+┌──────── harness ─────────────────────────────┐┌──────── SpeakHarness ──────────────┐
+│ ## What is this task about?                  ││ omp · vitrum · live            ●   │
+│ Developers use the **app's database user**…  ││────────────────────────────────────│
+│ - **Temporary:** the credential has a TTL    ││ What is this task about?           │
+│                                              ││ ▌Developers use the application's  │
+│                                              ││ ▌database user to access…          │
+│                                              ││ • Temporary: the credential has a  │
+│                                              ││   TTL.                             │
+│                                              ││────────────────────────────────────│
+│                                              ││ ▶ en · af_heart · 1.0× · 2/9  ? keys│
+└──────────────────────────────────────────────┘└────────────────────────────────────┘
 ```
 
-- Detects the harness session that is active in the current directory and follows new assistant responses.
-- Auto-read mode (optional) or read on demand.
-- Shows the rendered response with the sentence currently being spoken highlighted.
-- Keys work while the SpeakHarness pane is focused; harness-side shortcuts come from optional bridges (see "Keymaps").
+### 2. Wrap mode — `speakh run -- omp`
 
-## Architecture
+SpeakHarness starts the harness inside itself (embedded terminal) with a reader panel beside it. A configurable prefix key (default `ctrl+g`) sends commands to SpeakHarness while you keep typing in the harness. This solves keyboard focus and gives a capture path for harnesses without an adapter.
 
-```mermaid
-flowchart LR
-  subgraph Sources
-    S1[Session-file adapters<br/>OMP · Codex · Claude Code · Pi]
-    S2[Terminal capture<br/>tmux pane / PTY wrapper]
-    S3[Manual input<br/>stdin · clipboard · file]
-  end
-  S1 & S2 & S3 --> N[Normalized message stream]
-  N --> M[Markdown → speech script]
-  M --> L[Per-block language detection]
-  L --> V[Voice selection]
-  V --> E[TTS engine subprocess<br/>Kokoro + phonemizers]
-  E --> Q[Ordered playback queue]
-  Q --> A[OS audio player]
-  N & Q --> T[Terminal UI]
-  K[Config: keymap, voices, rules] --> T & V & M
-```
+### 3. Headless
 
-### 1. Harness sources (how "any harness" works)
+- `speakh say answer.md` — read a file or stdin once.
+- `speakh follow` — auto-read new answers without UI.
+- `speakh ctl <command>` — control a running instance (`speakh ctl replay`) from tmux bindings, shell aliases, or harness extensions.
 
-"Any harness" is handled in three tiers, best fidelity first:
+## Study mode
 
-| Tier | How it reads | Fidelity | Notes |
-| --- | --- | --- | --- |
-| Session-file adapter | Tails the harness's JSONL transcript | Exact markdown, message boundaries, roles | One small adapter per harness |
-| Terminal capture | Reads a tmux pane / wraps the harness in a PTY | Rendered text only, no reliable boundaries | Works with unknown harnesses |
-| Manual input | `stdin`, clipboard, file | Whatever the user gives | Always available |
+Toggled with `t`. Built for learning English (or Portuguese) from real answers:
 
-Adapter contract:
+- Sentence by sentence: pause after each sentence; `enter` continues, `r` repeats.
+- Repeat slower: `R` replays the current sentence at 0.75×.
+- Shadowing: optional silence after each sentence, proportional to its length, so you can repeat it out loud.
+- Save phrase: `p` saves the current sentence (with source, language, date) to `~/.local/share/speak-harness/phrases.md`; export to Anki CSV later.
+- Visible text always matches what is spoken.
 
-```ts
-interface HarnessAdapter {
-  id: string;                                   // "omp", "codex", "claude-code"
-  detect(cwd: string): Promise<SessionRef[]>;   // sessions for this project, newest first
-  watch(session: SessionRef): AsyncIterable<HarnessMessage>;
-}
+## Reading markdown well
 
-interface HarnessMessage {
-  id: string;
-  role: "assistant" | "user";
-  markdown: string;        // text blocks only; tool calls, thinking, and tool output excluded
-  createdAt: Date;
-  final: boolean;          // false while the harness is still streaming
-}
-```
+Rules (full table in DESIGN.md):
 
-Initial adapters, based on local transcripts:
+- Bold, italics, `#`, bullets, and other symbols are never spoken.
+- Headings start a new section with a longer pause.
+- Lists: one item at a time with a short pause; numbered lists keep their numbers.
+- **Code blocks are announced only**: "TypeScript code block, 12 lines", in the language of the surrounding text ("bloco de código TypeScript, 12 linhas").
+- Inline code is read as words (`speakLastMessage` → "speak last message"); long inline code is announced as "code".
+- Links read their label; bare URLs read the site name; file paths read the file name.
+- Tables are summarized ("table with 3 columns: name, type, default"), rows on request.
+- Abbreviations come from a per-language pronunciation dictionary the user can extend (`TTL` → "T T L").
+- Each paragraph is spoken in its own language's voice.
 
-| Harness | Location | Assistant text |
-| --- | --- | --- |
-| OMP | `~/.omp/agent/sessions/<project>/*.jsonl` | `type: "message"`, `message.role: "assistant"`, `content[].type: "text"` |
-| Codex | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` | `type: "response_item"`, `payload.role: "assistant"`, `content[].type: "output_text"` |
-| Claude Code | `~/.claude/projects/<project>/*.jsonl` | `type: "assistant"`, `message.content[].type: "text"` (to verify against a transcript containing assistant messages) |
-| Pi | `~/.pi/agent/sessions/…` | Same shape as OMP (to verify) |
+## Keyboard
 
-Rules: adapters are read-only, tolerate unknown fields and partial lines, and fail per adapter without stopping the app. Formats change; each adapter gets fixture-based tests from real (scrubbed) transcripts.
+Every action is a named command. Keys, the `ctl` CLI, and the command palette all call the same commands, and every key is remappable.
 
-### 2. Markdown → speech script
-
-The response is parsed as markdown (mdast) and converted to a speech script: a list of spoken segments with pauses and a pointer back to the source text for highlighting.
-
-| Markdown | Spoken as (default) | Configurable |
-| --- | --- | --- |
-| Heading | Its text, followed by a longer pause | Announce level: off |
-| Paragraph | Sentences | — |
-| Bold / italic / strikethrough | Plain text | — |
-| Bulleted list | Each item, short pause between | Announce count ("three items") |
-| Numbered list | "First… second…" or numbers | Style |
-| Inline code | Its text, identifiers split (`camelCase` → "camel case") | Spell symbols |
-| Fenced code block | "Code block, TypeScript, 12 lines" | Skip / announce / read |
-| Link | Label only | Read URL domain |
-| Bare URL / file path | Domain or last path segment | Full |
-| Table | "Table with 3 columns and 5 rows", then header names | Read rows |
-| Blockquote | Text with a "quote" cue | Cue off |
-| Emoji, decorative symbols | Dropped | Keep |
-| Abbreviations (`TTL`, `SQL`, `e.g.`) | Expanded through a per-language dictionary | User dictionary |
-
-Mixed-language responses are common (Portuguese explanation with English terms, or English text quoting Portuguese). Language is detected per block (paragraph, list item, heading); short blocks inherit the language of their neighbours. This fixes cases such as reading "TTL" inside a Portuguese answer.
-
-### 3. Speech engine
-
-- Kokoro-82M (local, Apache-2.0) in a Node subprocess so inference never blocks the UI — already proven in the `pi-speak` work.
-- English: Kokoro's built-in phonemizer. Brazilian Portuguese: eSpeak-NG (`ephone`, `pt-BR`) → `generate_from_ids`, voices `pf_dora`, `pm_alex`, `pm_santa`.
-- Engine interface (`synthesize(segment, voice, speed) → PCM`) so other local engines (for example Piper) can be added later.
-- Chunked synthesis: the first segment plays while the next ones are synthesized; stop/skip cancels pending work.
-- Audio output through `pw-play` / `paplay` / `aplay` / `afplay` discovered on `PATH` (NixOS-safe).
-
-### 4. Terminal UI
-
-Panes: session header (harness, project, live/idle), rendered response with current-sentence highlight, message history list, status line (language, voice, speed, position).
-
-Default keymap (all remappable):
-
-| Action | Key |
+| Command | Default key |
 | --- | --- |
-| Play / pause | `space` |
-| Stop | `s` |
-| Next / previous sentence | `l` / `h` |
-| Next / previous paragraph | `L` / `H` |
-| Replay current response | `r` |
-| Read previous / next response | `k` / `j` |
-| Toggle auto-read | `a` |
-| Force voice: primary / alternate / auto | `1` / `2` / `0` |
-| Speed down / up | `-` / `+` |
-| Switch session or harness | `tab` |
-| Settings | `,` |
-| Help | `?` |
-| Quit | `q` |
+| `play-pause` | `space` |
+| `stop` | `s` |
+| `next-sentence` / `prev-sentence` | `l` / `h` |
+| `next-block` / `prev-block` | `L` / `H` |
+| `repeat-sentence` / `repeat-slower` | `r` / `R` |
+| `replay-message` | `ctrl+r` |
+| `next-message` / `prev-message` | `j` / `k` |
+| `auto-read` toggle | `a` |
+| `study-mode` toggle | `t` |
+| `save-phrase` | `p` |
+| `voice-auto` / `voice-primary` / `voice-alternate` | `0` / `1` / `2` |
+| `speed-up` / `speed-down` | `+` / `-` |
+| `switch-session` | `tab` |
+| `command-palette` | `:` |
+| `settings` / `help` / `quit` | `,` / `?` / `q` |
 
-### Keymaps
+Multi-key sequences (`g g`) and a leader key are supported through `@opentui/keymap`. Conflicts are reported in the settings screen and on startup.
 
-- Config file `~/.config/speak-harness/config.toml`, editable from the settings screen; validation reports unknown actions and conflicting keys.
-- Keys reach SpeakHarness only while its pane is focused. To trigger reading from inside the harness, the plan adds optional bridges in this order:
-  1. A local control socket (`speakh ctl play|stop|replay`) that anything can call — tmux bindings, shell aliases, harness hooks.
-  2. Per-harness shortcut bridges where the harness supports extensions (OMP/Pi extension calling the socket).
-  3. OS-level global hotkeys later, if still needed.
+## Screens
 
-Example:
-
-```toml
-[keys]
-play_pause = "space"
-replay = "r"
-voice_alternate = "2"
-
-[voices]
-primary = "af_heart"
-alternate = "pf_dora"
-auto_language = true
-speed = 1.0
-
-[reading]
-code_blocks = "announce"   # skip | announce | read
-tables = "summary"         # summary | rows
-auto_read = false
-```
-
-## Stack
-
-- TypeScript on Bun (single binary via `bun build --compile` later); Node subprocess for the TTS engine.
-- Markdown: `mdast-util-from-markdown` + GFM extension.
-- Language detection: `franc-min`, restricted to configured languages, with a minimum length and neighbour inheritance.
-- TUI library: open decision (see below).
-- Packaging: npm + Nix flake.
+1. **Reader** — rendered answer with the current sentence highlighted; status line with harness, language, voice, speed, position.
+2. **Messages** — previous answers of the session; select to read.
+3. **Sessions** — detected harness sessions for this directory or all directories.
+4. **Settings** — voices, speed, reading rules, languages, keymap editor with conflict warnings.
+5. **Help** — cheat sheet generated from the live keymap.
+6. **Phrases** — saved study phrases, playable.
 
 ## Milestones
 
-| Milestone | Delivers | Done when |
+| # | Milestone | Done when |
 | --- | --- | --- |
-| M0 — Core | Speech script from markdown, per-block language detection, engine subprocess, playback queue; `speakh say file.md` | A long mixed EN/PT markdown file is read with correct voices, without markdown noise |
-| M1 — Adapters | OMP, Codex, Claude Code session watchers + fixtures; `speakh follow` (headless) | New assistant responses from each harness are spoken as they finish |
-| M2 — TUI | Rendered response, highlight, history, keymap and settings | All default actions work and are remappable from config |
-| M3 — Control bridge | Control socket, tmux example bindings, OMP extension bridge | Reading can be triggered from inside the harness |
-| M4 — Fallback capture | tmux pane / PTY capture for unknown harnesses | Reads a harness with no adapter, with acceptable boundaries |
-| M5 — Distribution | Nix flake, npm package, docs | Clean install on NixOS and a non-Nix Linux |
+| M0 | **Spikes** — OpenTUI markdown highlight, Bun PTY + embedded terminal, Kokoro latency in a subprocess | Each spike answers its question with a runnable script |
+| M1 | **Speech core + `speakh say`** — markdown → speech script, per-paragraph language, Kokoro engine, chunked playback | A long mixed EN/PT markdown answer is read naturally with the correct voices, code blocks announced |
+| M2 | **Harness adapters + `speakh follow`** — OMP, Codex, Claude Code, Pi | New answers from each harness are spoken when finished; fixture tests per adapter |
+| M3 | **Reader TUI** — reader, messages, sessions, status line, highlight | Navigate and read any answer of the current session from the TUI |
+| M4 | **Keymap + settings** — config file, settings screen, keymap editor, help | Every command remappable from UI and file; conflicts reported |
+| M5 | **Control** — `speakh ctl`, tmux bindings, OMP/Pi extension bridge | Reading triggered from inside the harness |
+| M6 | **Study mode** | Sentence-by-sentence, repeat slower, shadowing, saved phrases |
+| M7 | **Wrap mode** — `speakh run -- <harness>` | Any harness runs inside SpeakHarness with the prefix key working |
+| M8 | **Distribution** — Nix flake, npm, standalone binary | Clean install on NixOS and on a non-Nix Linux |
 
-## Risks
+## Out of scope for v1
 
-- **Transcript formats change** — mitigated by small adapters, fixtures, and per-adapter failure isolation.
-- **Streaming responses** — speak only finished messages by default; partial reading is a later option.
-- **Short or mixed-language text** — neighbour inheritance and a primary-voice fallback; manual override always available.
-- **Kokoro JS multilingual support** — pt-BR relies on our own phonemization path, not upstream `kokoro-js`.
-- **Terminal capture quality** — fallback tier only; never the primary path.
+- Cloud TTS, cloud language detection, voice cloning.
+- Translation (could come later as an optional, explicitly enabled feature).
+- Reading tool calls, tool output, or thinking blocks.
+- Global OS hotkeys (the `ctl` command covers external triggers).
 
-## Open decisions
+## Domain
 
-1. TUI library: Ink (React, mature) vs. OpenTUI (newer, faster rendering) vs. a minimal custom renderer.
-2. Default code-block behaviour: announce (recommended) or skip.
-3. License: MIT (matches `pi-speak`, whose MIT notice must be kept for any reused code).
-4. Domain: `speakharness.com` had no registration in RDAP at planning time; not purchased.
+`speakharness.com` had no registration in RDAP when planned. Not purchased.

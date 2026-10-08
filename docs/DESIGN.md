@@ -1,0 +1,285 @@
+# SpeakHarness — technical design
+
+Product plan: [PLAN.md](PLAN.md).
+
+## Process model
+
+One process runs the core: the TUI (`speakh`), wrap mode (`speakh run`), or headless follow (`speakh follow`). Whichever runs owns the audio queue and a control socket. `speakh ctl` is a thin client of that socket.
+
+```mermaid
+flowchart LR
+  subgraph core["speakh process (Bun)"]
+    SRC[Sources<br/>adapters · PTY capture · stdin] --> BUS[Message store]
+    BUS --> MD[Markdown → speech script]
+    MD --> LANG[Language + voice resolver]
+    LANG --> PB[Playback controller]
+    PB --> ENG[Engine client]
+    PB --> OUT[Audio output]
+    CMD[Command registry] --> PB & BUS & UI
+    UI[OpenTUI app] --> CMD
+    SOCK[Control socket] --> CMD
+    CFG[Config + watcher] --> MD & LANG & UI & CMD
+  end
+  ENG <-->|JSON lines| W[TTS worker<br/>Node · Kokoro · eSpeak-NG]
+  OUT --> P[pw-play · paplay · aplay · afplay]
+  CTL[speakh ctl] --> SOCK
+```
+
+The TTS worker is a separate Node process because ONNX inference is CPU-bound and blocked the terminal UI when run in-process, and onnxruntime crashed inside a Bun worker thread (measured in the pi-speak work).
+
+## Repository layout
+
+Single package, strict module boundaries (split into workspaces only when a second consumer appears):
+
+```text
+src/
+  cli/            entry points: tui, run, follow, say, ctl
+  core/
+    messages.ts   HarnessMessage, MessageStore
+    speech/       markdown → SpeechScript, sentence split, lexicon
+    language/     detection, voice resolution
+    playback/     controller, queue, state machine
+    commands.ts   command registry (single source for keys, ctl, palette)
+    config/       schema, load, watch, write
+  adapters/       omp, pi, codex, claude-code, (shared jsonl tail)
+  capture/        PTY spawn + screen text extraction (wrap mode)
+  engine/         client, worker (Node), kokoro, phonemizers
+  audio/          player discovery, wav writing
+  control/        unix socket server + client
+  tui/            OpenTUI app, screens, keymap wiring
+lexicon/          en.toml, pt-BR.toml
+test/fixtures/    scrubbed transcripts, markdown samples
+```
+
+## Data model
+
+```ts
+type HarnessId = "omp" | "pi" | "codex" | "claude-code" | "capture" | "manual";
+
+interface SessionRef { harness: HarnessId; id: string; cwd?: string; path?: string; updatedAt: Date }
+
+interface HarnessMessage {
+  key: string;              // harness + session + message id, stable
+  session: SessionRef;
+  markdown: string;         // assistant text only
+  createdAt: Date;
+  final: boolean;
+}
+
+type SegmentKind = "heading" | "sentence" | "list-item" | "quote" | "cue" | "table";
+
+interface SpeechSegment {
+  text: string;             // what the engine speaks
+  display: { start: number; end: number }; // offsets in message.markdown for highlight
+  kind: SegmentKind;
+  blockIndex: number;
+  lang: "en" | "pt-BR";
+  pauseAfterMs: number;
+}
+
+interface SpeechScript { messageKey: string; segments: SpeechSegment[]; blocks: number }
+```
+
+Every segment keeps its source range; the reader highlights by range, and navigation (`next-sentence`, `next-block`) moves over segments, not audio.
+
+## Harness adapters
+
+```ts
+interface HarnessAdapter {
+  id: HarnessId;
+  sessions(filter: { cwd?: string }): Promise<SessionRef[]>;  // newest first
+  watch(session: SessionRef, signal: AbortSignal): AsyncIterable<HarnessMessage>;
+}
+```
+
+Shared `JsonlTail`: opens the file, reads from a byte offset, buffers partial lines, follows appends with `fs.watch` plus a poll fallback, and restarts on truncation or replacement. Adapters only map parsed lines to messages.
+
+| Adapter | Sessions | Assistant text | Final when |
+| --- | --- | --- | --- |
+| omp / pi | `~/.omp/agent/sessions/<encoded-cwd>/*.jsonl` (`~/.pi/agent/…`) | `type:"message"`, `message.role:"assistant"`, `content[type=text].text` | line written (messages are appended complete) |
+| codex | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`; cwd from session metadata | `type:"response_item"`, `payload.role:"assistant"`, `content[type=output_text].text` | line written |
+| claude-code | `~/.claude/projects/<encoded-cwd>/*.jsonl` | `type:"assistant"`, `message.content[type=text].text` — verify on fixtures | line written |
+
+Selection: sessions whose cwd matches the current directory, most recently updated first; `switch-session` lists all. Directory encodings are adapter-private.
+
+Rules:
+
+- Read-only. Never write to harness files.
+- Unknown fields and lines are ignored; a broken line never stops the tail.
+- One adapter failing shows a warning in the status line and does not affect others.
+- Thinking blocks, tool calls, and tool results are excluded.
+- Each adapter has fixture tests built from real transcripts with content scrubbed.
+
+### Capture (wrap mode)
+
+`Bun.spawn(cmd, { terminal })` runs the harness in a PTY; its output feeds OpenTUI's `EmbeddedTerminalRenderable`. Keys go to the PTY except after the prefix key. Message boundaries in capture are heuristic (text appearing after the last user input until the screen is idle for N ms), so wrap mode prefers a real adapter when the wrapped command is recognized and uses capture only as a fallback.
+
+## Markdown → speech script
+
+1. Parse with `mdast-util-from-markdown` + GFM (tables, strikethrough, autolinks), keeping positions.
+2. Walk blocks; each block becomes one or more segments:
+
+| Node | Output |
+| --- | --- |
+| heading | one `heading` segment, pause 600 ms |
+| paragraph | sentences (`Intl.Segmenter` with granularity `sentence`, locale of the block) |
+| list / listItem | item text as `list-item`, pause 250 ms; ordered lists prefix the number |
+| code (fenced) | `cue`: "{lang} code block, {n} lines" / "bloco de código {lang}, {n} linhas"; no language → "code block" |
+| inlineCode | split identifiers (`camelCase`, `snake_case`, `kebab-case`, dots); > 40 chars or symbol-heavy → "code" |
+| link | label; autolink/bare URL → host without `www.` |
+| file path in text | last segment ("src/core/speech.ts" → "speech.ts") |
+| table | `table` summary: columns count and header names; rows on `read-table` |
+| blockquote | children with a "quote" cue, configurable |
+| emphasis, strong, delete | children text |
+| html, image | alt text or dropped |
+| thematicBreak | pause 600 ms |
+
+3. Normalize: drop emoji and decorative symbols, collapse whitespace, apply the lexicon (case-sensitive whole-word entries per language: `TTL` → `T T L`, `SQL` → `S Q L`, `JSON` → `jason`, `e.g.` → `for example`, `ex.` → `por exemplo`).
+4. Segments longer than the engine's comfortable size (≈240 chars) are split at clause boundaries, then word boundaries.
+
+Code-block cues are spoken in the language of the surrounding text. The `code_blocks` setting exists only to change the cue wording; reading code is not offered.
+
+## Language and voice
+
+Detection runs per block, not per message:
+
+1. Candidate languages: the configured voices' languages (v1: `en`, `pt-BR`).
+2. Score block text (lexicon-normalized, without inline code) with `franc-min` restricted to `eng`/`por`, `minLength` 20.
+3. Undetermined or short blocks inherit the previous block's language; the first block inherits the message's dominant language (detected on the whole text).
+4. Hysteresis: a block switches language only if the score gap clears a threshold, so one English term inside Portuguese does not flip the voice.
+
+Voice resolution: `voiceOverride` (from `voice-primary`/`voice-alternate`) → language map in config → primary voice.
+
+## Engine protocol
+
+Bun ↔ Node worker over stdio JSON lines (binary audio as base64; v1 measured fine for 24 kHz mono chunks):
+
+```text
+→ {"id":1,"op":"prepare"}
+← {"id":1,"ok":true}
+→ {"id":2,"op":"synthesize","text":"…","voice":"pf_dora","lang":"pt-BR","speed":1.0}
+← {"id":2,"ok":true,"sampleRate":24000,"pcm":"<base64 f32>"}
+→ {"id":3,"op":"cancel","target":2}
+```
+
+- English voices: kokoro-js `generate`. pt-BR voices: eSpeak-NG (`ephone`, `pt-BR`) → tokenizer → `generate_from_ids`.
+- Model download is explicit, shows progress, and is cached in the Hugging Face cache.
+- Worker crash → pending requests fail with a visible error; next request restarts the worker.
+
+## Playback controller
+
+```mermaid
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Preparing: play(message, from)
+  Preparing --> Speaking: first segment ready
+  Speaking --> Speaking: segment done → next
+  Speaking --> Paused: pause
+  Paused --> Speaking: resume
+  Speaking --> StudyWait: study mode, sentence done
+  StudyWait --> Speaking: continue / repeat
+  Speaking --> Idle: end / stop
+  Paused --> Idle: stop
+  Preparing --> Idle: stop / error
+```
+
+- Look-ahead: synthesize up to 2 segments ahead of the one playing; navigation cancels outdated work.
+- Pause stops the player process and remembers the segment; resume restarts that segment (simple and reliable over player-specific seeking).
+- Auto-read: a new final message starts playback only when Idle; otherwise it is queued (newest wins, configurable).
+- `repeat-slower` re-synthesizes the current segment at `speed × 0.75`.
+
+## Commands
+
+A registry is the single source of truth:
+
+```ts
+interface Command { id: string; title: string; group: string; run(ctx: CommandContext, args?: string[]): Promise<void> }
+```
+
+- `@opentui/keymap` binds keys to command ids (`registerDefaultKeys`, leader, sequence disambiguation, conflict diagnostics, cheat-sheet helpers).
+- Command palette lists the registry.
+- Control socket runs the same ids: `speakh ctl replay-message`.
+
+## Control socket
+
+Unix socket at `$XDG_RUNTIME_DIR/speak-harness/<pid>.sock` plus a `current` symlink. Newline-delimited JSON: `{"command":"replay-message"}` → `{"ok":true}`. Local user only (socket file mode 0600). Example tmux binding:
+
+```text
+bind-key S run-shell "speakh ctl replay-message"
+```
+
+The OMP/Pi extension bridge is a few lines calling the same socket from a harness shortcut.
+
+## Config
+
+`~/.config/speak-harness/config.toml`, watched and hot-reloaded; invalid edits keep the last valid config and show the error.
+
+```toml
+[voices]
+primary = "af_heart"
+alternate = "pf_dora"
+auto_language = true
+speed = 1.0
+
+[voices.languages]
+en = "af_heart"
+"pt-BR" = "pf_dora"
+
+[reading]
+auto_read = false
+code_block_cue = "announce"     # announce only; wording is localized
+tables = "summary"              # summary | rows
+quote_cue = true
+
+[study]
+pause_after_sentence = false
+shadowing = false
+slower_speed = 0.75
+
+[keys]
+leader = "\\"
+play-pause = "space"
+replay-message = "ctrl+r"
+save-phrase = "p"
+
+[wrap]
+prefix = "ctrl+g"
+
+[lexicon.en]
+TTL = "T T L"
+```
+
+## TUI composition (OpenTUI)
+
+- `Reader`: `ScrollBoxRenderable` of block renderables. Rendering uses OpenTUI markdown/code components where they allow range styling; otherwise blocks are rendered from the same mdast with `TextRenderable` spans so the speech ranges map 1:1 to styled spans (decided in spike M0-1).
+- `StatusLine`, `MessagesList` (`SelectRenderable`), `SessionPicker`, `Settings` (form of `Select`, `Input`, `Slider`), `KeymapEditor`, `Help` (from keymap extras), `Phrases`.
+- Wrap mode: horizontal split, `EmbeddedTerminalRenderable` (harness) + `Reader`.
+- Tests with OpenTUI's in-memory test renderer: screens render, commands dispatch, highlight follows playback events.
+
+## Testing strategy
+
+| Layer | Tests |
+| --- | --- |
+| Speech script | Golden tests: markdown fixture → segments (text, kind, lang, range) |
+| Language | Table tests: EN, PT, mixed, short, technical terms; hysteresis cases |
+| Adapters | Real scrubbed JSONL fixtures; partial lines; truncation; unknown fields |
+| Playback | State-machine tests with a fake engine and fake player (cancel, pause, look-ahead) |
+| Commands/keymap | Every default binding resolves; conflicts detected; ctl dispatch |
+| TUI | In-memory renderer snapshots and interaction tests |
+| Engine | Manual smoke script (real model, real audio) per release, documented |
+
+## Spikes before building (M0)
+
+1. **Highlight**: can OpenTUI's markdown component style an arbitrary source range, or do we render blocks ourselves?
+2. **Wrap mode**: `Bun.spawn` with `terminal` + `EmbeddedTerminalRenderable`: input passthrough, resize, prefix key.
+3. **Latency**: first-audio time and real-time factor of Kokoro q4 in the Node worker for EN and pt-BR segments on CPU.
+
+## Risks
+
+| Risk | Mitigation |
+| --- | --- |
+| Harness transcript formats change | Small adapters, fixtures, failure isolation |
+| Short / mixed-language text misdetected | Block-level detection, inheritance, hysteresis, manual override |
+| pt-BR quality depends on eSpeak-NG phonemes | Lexicon for technical terms; engine interface allows other engines later |
+| OpenTUI requires Bun ≥ 1.3.14 (Node needs ≥ 26 + FFI) | Ship with Bun; Nix flake pins it |
+| Capture boundaries are heuristic | Capture only as fallback; adapters first |
