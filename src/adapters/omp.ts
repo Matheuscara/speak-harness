@@ -4,8 +4,11 @@ import {
   createTranscriptAdapter,
   dateField,
   findJsonl,
+  firstValue,
   isRecord,
   joinText,
+  latestDate,
+  promptTitle,
   stringField,
   type TranscriptAdapterOptions,
   type TranscriptFormat,
@@ -22,7 +25,11 @@ import {
  * Directory names are an OMP/Pi implementation detail (home-relative, hashed, legacy `--abs--`), so cwd comes from the header.
  */
 
-function describe(sample: TranscriptSample): { id?: string; title?: string; cwd?: string } {
+function messageRole(record: Record<string, unknown>): unknown {
+  return record.type === "message" && isRecord(record.message) ? record.message.role : undefined;
+}
+
+function describe(sample: TranscriptSample): { id?: string; title?: string; cwd?: string; lastActivity?: Date } {
   let id: string | undefined;
   let cwd: string | undefined;
   let headerTitle: string | undefined;
@@ -40,7 +47,14 @@ function describe(sample: TranscriptSample): { id?: string; title?: string; cwd?
   for (const record of sample.tail) {
     if (isRecord(record) && record.type === "session_info") sessionName = typeof record.name === "string" ? record.name.trim() : undefined;
   }
-  return { id, cwd, title: titleLine ?? (sessionName || undefined) ?? headerTitle };
+  const firstPrompt = firstValue(sample.head, (record) =>
+    messageRole(record) === "user" && isRecord(record.message) ? promptTitle(joinText(record.message.content, "text")) : undefined,
+  );
+  const lastActivity = latestDate(sample.tail, (record) => {
+    const role = messageRole(record);
+    return role === "user" || role === "assistant" ? dateField(record, "timestamp") : undefined;
+  });
+  return { id, cwd, title: titleLine ?? (sessionName || undefined) ?? headerTitle ?? firstPrompt, lastActivity };
 }
 
 function createParser(): TranscriptParser {
@@ -63,8 +77,8 @@ function format(id: "omp" | "pi", label: string, sessionsRoot: string): Transcri
     id,
     label,
     files: () => findJsonl(sessionsRoot, 1),
-    headLines: 2,
-    readTail: id === "pi",
+    headLines: 40,
+    readTail: true,
     describe,
     createParser,
   };

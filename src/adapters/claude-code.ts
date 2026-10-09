@@ -4,8 +4,11 @@ import {
   createTranscriptAdapter,
   dateField,
   findJsonl,
+  firstValue,
   isRecord,
   joinText,
+  latestDate,
+  promptTitle,
   stringField,
   type MessageDraft,
   type TranscriptAdapterOptions,
@@ -22,7 +25,15 @@ import {
  * "isSidechain": true belong to subagents; "isApiErrorMessage": true lines are synthetic error notices.
  */
 
-function describe(sample: TranscriptSample): { title?: string; cwd?: string } {
+/** Text the user typed: skips meta lines, slash-command wrappers (`<command-…>`) and tool results. */
+function typedPrompt(record: Record<string, unknown>): string | undefined {
+  if (record.type !== "user" || record.isMeta === true || record.isSidechain === true || !isRecord(record.message)) return undefined;
+  const text = joinText(record.message.content, "text");
+  if (!text || text.startsWith("<")) return undefined;
+  return promptTitle(text);
+}
+
+function describe(sample: TranscriptSample): { title?: string; cwd?: string; lastActivity?: Date } {
   let cwd: string | undefined;
   let title: string | undefined;
   for (const record of [...sample.head, ...sample.tail]) {
@@ -30,7 +41,10 @@ function describe(sample: TranscriptSample): { title?: string; cwd?: string } {
     cwd ??= stringField(record, "cwd");
     if (record.type === "ai-title") title = stringField(record, "aiTitle") ?? title;
   }
-  return { cwd, title };
+  const lastActivity = latestDate(sample.tail, (record) =>
+    (record.type === "user" || record.type === "assistant") && record.isSidechain !== true ? dateField(record, "timestamp") : undefined,
+  );
+  return { cwd, title: title ?? firstValue(sample.head, typedPrompt), lastActivity };
 }
 
 interface Response {

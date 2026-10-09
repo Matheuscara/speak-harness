@@ -45,12 +45,12 @@ async function demoSession(adapter: HarnessAdapter): Promise<SessionRef> {
 }
 
 describe("claude-code adapter", () => {
-  test("lists sessions by cwd with the file name as id and the latest ai-title", async () => {
+  test("lists sessions by cwd with the file name as id, the latest ai-title, else the first prompt", async () => {
     const adapter = createClaudeCodeAdapter(home);
     const all = await adapter.sessions({});
     expect(all.map((session) => [session.id, session.cwd, session.title])).toEqual([
       [ID, "/work/demo", "Explaining tests"],
-      ["c4038643-7404-4d28-ab77-000000000002", "/other", undefined],
+      ["c4038643-7404-4d28-ab77-000000000002", "/other", "Hi"],
     ]);
     expect((await adapter.sessions({ cwd: "/other" })).map((session) => session.id)).toEqual(["c4038643-7404-4d28-ab77-000000000002"]);
   });

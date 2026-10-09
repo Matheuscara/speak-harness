@@ -36,9 +36,10 @@ export interface TranscriptFormat {
   files(): Promise<string[]>;
   /** How many head lines `describe` needs. */
   headLines: number;
-  /** Whether `describe` needs the tail of the file (titles that change over time). */
+  /** Whether `describe` needs the tail of the file (titles that change, last activity). */
   readTail: boolean;
-  describe(sample: TranscriptSample): { id?: string; title?: string; cwd?: string };
+  /** `lastActivity`: time of the newest user or assistant message (sessions sort by it; file mtime is the fallback). */
+  describe(sample: TranscriptSample): { id?: string; title?: string; cwd?: string; lastActivity?: Date };
   createParser(): TranscriptParser;
 }
 
@@ -49,7 +50,7 @@ export interface TranscriptAdapterOptions {
   settleMs?: number;
 }
 
-const HEAD_MAX_BYTES = 4 << 20;
+const HEAD_MAX_BYTES = 1 << 20;
 const TAIL_BYTES = 64 << 10;
 const DESCRIBE_CONCURRENCY = 32;
 
@@ -80,6 +81,42 @@ export function joinText(content: unknown, partType: string): string {
     if (text) parts.push(text);
   }
   return parts.join("\n\n");
+}
+
+const PROMPT_TITLE_CHARS = 60;
+
+/** A session name made from the user's first prompt: first non-empty line, whitespace collapsed, cut at a word. */
+export function promptTitle(text: string | undefined): string | undefined {
+  const line = text
+    ?.split("\n")
+    .map((part) => part.replace(/\s+/g, " ").trim())
+    .find((part) => part !== "");
+  if (!line) return undefined;
+  if (line.length <= PROMPT_TITLE_CHARS) return line;
+  const cut = line.slice(0, PROMPT_TITLE_CHARS);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > PROMPT_TITLE_CHARS / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
+}
+
+/** Newest date that `pick` finds in `records`. */
+export function latestDate(records: readonly unknown[], pick: (record: Record<string, unknown>) => Date | undefined): Date | undefined {
+  let latest: Date | undefined;
+  for (const record of records) {
+    if (!isRecord(record)) continue;
+    const date = pick(record);
+    if (date && (!latest || date > latest)) latest = date;
+  }
+  return latest;
+}
+
+/** First record (in order) for which `pick` returns a value. */
+export function firstValue<T>(records: readonly unknown[], pick: (record: Record<string, unknown>) => T | undefined): T | undefined {
+  for (const record of records) {
+    if (!isRecord(record)) continue;
+    const value = pick(record);
+    if (value !== undefined) return value;
+  }
+  return undefined;
 }
 
 /** Lists `*.jsonl` files `depth` directory levels below `root` (0 = directly inside). */
@@ -183,7 +220,7 @@ export function createTranscriptAdapter(format: TranscriptFormat, options: Trans
       harness: format.id,
       id: info.id ?? basename(path, ".jsonl"),
       path,
-      updatedAt: stats.mtime,
+      updatedAt: info.lastActivity ?? stats.mtime,
     };
     if (info.title) ref.title = info.title;
     if (info.cwd) ref.cwd = info.cwd;
