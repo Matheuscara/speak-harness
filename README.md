@@ -1,37 +1,36 @@
 # SpeakHarness
 
-Local-first speech for AI coding harnesses.
+Read AI coding-harness answers aloud from your terminal — locally. Follows OMP, Pi, Codex and Claude Code sessions, turns markdown into natural speech (code blocks are announced, never read), and picks the voice per paragraph: Kokoro for English, Piper for Brazilian Portuguese.
 
-## Vision
+## Install
 
-Read assistant responses aloud with a voice that matches the response language, while keeping the transcript visible. Work across coding harnesses instead of binding the speech engine to one agent or terminal UI.
+```sh
+nix run github:Matheuscara/speak-harness          # Nix
+# or, from a checkout (Bun ≥ 1.3.14 and Node ≥ 22.18 on PATH):
+bun install && bun src/cli/main.ts setup
+```
 
-## Product direction
+`speakh setup` downloads the default voices (Kokoro q4 ~305 MB, Piper faber ~63 MB) into `~/.cache/speak-harness`. Audio plays through `pw-play`, `paplay`, `aplay`, `afplay` or `ffplay`.
 
-- Detect English and Brazilian Portuguese locally; use language-specific voices and phonemization.
-- Keep the selected text visible while listening; replay the last response and choose an explicit voice when desired.
-- Support long responses incrementally so synthesis does not block the harness UI.
-- Run speech synthesis and audio playback locally by default. No response text leaves the machine for language detection or voice generation.
-- Let each harness adapter preserve its native interaction model and keyboard shortcuts.
+## Use
 
-## Proposed architecture
+| Command | What it does |
+| --- | --- |
+| `speakh` | Reader panel: follows the newest harness session in the current directory |
+| `speakh run -- omp` | Runs the harness inside SpeakHarness with the reader beside it; `ctrl+g` then a key sends commands |
+| `speakh say file.md` / `… \| speakh say -` | Reads markdown once |
+| `speakh follow` | Auto-reads new answers, no UI |
+| `speakh ctl replay-message` | Controls a running instance (tmux bindings, aliases) |
+| `speakh voices list` / `install <id>` | Manage voices |
 
-1. **Speech core** — normalized requests, local language detection, voice/language metadata, TTS engine interface, chunked synthesis, cancellation, and playback queue.
-2. **Harness adapters** — thin integrations that pass assistant text and user settings to the core. Start with an OMP/Pi adapter; add others behind the same core contract.
-3. **Host runtime** — platform-aware audio output and model/runtime management. Keep OS-specific dependencies out of harness adapters.
-4. **User controls** — a small settings surface for automatic language selection, voice overrides, speed, replay, and interruption.
+Keys (all remappable in `~/.config/speak-harness/config.toml` or the settings screen `,`): `space` play/pause, `s` stop, `h`/`l` sentence, `shift+h`/`shift+l` paragraph, `j`/`k` answer, `r` repeat, `shift+r` repeat slower, `t` study mode, `enter` continue, `p` save phrase, `0`/`1`/`2` voice auto/primary/alternate, `+`/`-` speed, `tab` sessions, `m` messages, `:` palette, `?` help, `q` quit.
 
-## First milestone
+**Study mode** (`t`) reads sentence by sentence, repeats slower, optionally leaves shadowing silence, and saves phrases to `~/.local/share/speak-harness/phrases.md`.
 
-A working local flow for English and pt-BR: read the latest assistant response, detect its language, synthesize the matching voice in ordered chunks, play it without freezing the TUI, and retain a manual replay/voice override. Validate it in OMP before adding another harness adapter.
+## Docs
 
-## Explicit non-goals for the first milestone
+[docs/PLAN.md](docs/PLAN.md) (product) · [docs/DESIGN.md](docs/DESIGN.md) (architecture).
 
-- Cloud speech or cloud language detection.
-- Voice cloning.
-- Supporting every harness before the core contract has been exercised by a second adapter.
-- Replacing each harness's own transcript or terminal UI.
+## License
 
-## Repository status
-
-Planning repository. See [docs/PLAN.md](docs/PLAN.md) for the product plan (usage modes, study mode, markdown reading, keymap, milestones) and [docs/DESIGN.md](docs/DESIGN.md) for the technical design (adapters, speech script, language detection, engine protocol, OpenTUI composition). The existing `pi-speak` work informed this direction; implementation has not been copied into this repository yet.
+MIT. The bundled eSpeak-NG phonemizer (`ephone`) is GPL-3.0-or-later, so distributions including it are covered by GPL-3.0 as a combined work. Piper pt-BR voices faber/cadu/jeff: CC0 datasets; Kokoro: Apache-2.0.

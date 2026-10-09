@@ -31,6 +31,11 @@ export interface HarnessMessage {
   final: boolean;
   /** True when the message already existed when watching started. */
   historical: boolean;
+  /**
+   * True for in-between narration sent alongside tool calls (OMP/Pi/Claude Code text in a message that also
+   * calls tools, Codex `phase: "commentary"`). Auto-read and default selection skip commentary.
+   */
+  commentary: boolean;
 }
 
 export interface HarnessAdapter {

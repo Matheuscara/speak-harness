@@ -47,7 +47,6 @@ src/
   audio/          player discovery, wav writing
   control/        unix socket server + client
   tui/            OpenTUI app, screens, keymap wiring
-lexicon/          en.toml, pt-BR.toml
 test/fixtures/    scrubbed transcripts, markdown samples
 ```
 
@@ -59,11 +58,13 @@ type HarnessId = "omp" | "pi" | "codex" | "claude-code" | "capture" | "manual";
 interface SessionRef { harness: HarnessId; id: string; cwd?: string; path?: string; updatedAt: Date }
 
 interface HarnessMessage {
-  key: string;              // harness + session + message id, stable
+  key: string;              // harness:sessionId:messageId, stable; may repeat with updated text (treat as update)
   session: SessionRef;
   markdown: string;         // assistant text only
   createdAt: Date;
-  final: boolean;
+  final: boolean;           // false only while a captured message may still grow
+  historical: boolean;      // existed when watching started
+  commentary: boolean;      // narration alongside tool calls; skipped by auto-read and default selection
 }
 
 type SegmentKind = "heading" | "sentence" | "list-item" | "quote" | "cue" | "table";
@@ -96,11 +97,12 @@ Shared `JsonlTail`: opens the file, reads from a byte offset, buffers partial li
 
 | Adapter | Sessions | Assistant text | Final when |
 | --- | --- | --- | --- |
-| omp / pi | `~/.omp/agent/sessions/<encoded-cwd>/*.jsonl` (`~/.pi/agent/…`) | `type:"message"`, `message.role:"assistant"`, `content[type=text].text` | line written (messages are appended complete) |
-| codex | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`; cwd from session metadata | `type:"response_item"`, `payload.role:"assistant"`, `content[type=output_text].text` | line written |
-| claude-code | `~/.claude/projects/<encoded-cwd>/*.jsonl` | `type:"assistant"`, `message.content[type=text].text` — verify on fixtures | line written |
+| omp | `~/.omp/agent/sessions/<dir>/<ts>_<id>.jsonl`; line 1 `type:"title"` (rewritten in place), line 2 `type:"session"` with `id`, `cwd`, `title` | `type:"message"`, `message.role:"assistant"`, `content[type=text].text`; commentary when content has a `toolCall` | line written |
+| pi | `~/.pi/agent/sessions/--<abs-path>--/*.jsonl`; header line; title from latest `session_info.name` | same as omp | line written |
+| codex | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`; `session_meta` with `payload.id`, `payload.cwd` | `response_item` with `payload.type:"message"`, `role:"assistant"`, `content[type=output_text].text`; commentary when `phase:"commentary"`; `event_msg` duplicates ignored | line written |
+| claude-code | `~/.claude/projects/<encoded-cwd>/<sessionId>.jsonl`; `cwd`/`sessionId` on every line; title from latest `ai-title` | `type:"assistant"` lines sharing `message.id` are merged (one content block per line); commentary when any block is `tool_use`; sidechain and API-error lines excluded | next unrelated line, or 2 s quiet |
 
-Selection: sessions whose cwd matches the current directory, most recently updated first; `switch-session` lists all. Directory encodings are adapter-private.
+Selection: sessions whose cwd matches the current directory, most recently updated first; `switch-session` lists all. cwd comes from transcript metadata, never from directory names (their encodings vary across versions). Subagent transcripts are skipped.
 
 Rules:
 
@@ -206,7 +208,7 @@ Voices are downloaded on demand from `rhasspy/piper-voices` on Hugging Face into
 
 ### Kokoro engine
 
-kokoro-js, model `onnx-community/Kokoro-82M-v1.0-ONNX` q4 on CPU, downloaded once (~90 MB). English through `generate`; pt-BR through the shared phonemizer and `generate_from_ids`.
+kokoro-js, model `onnx-community/Kokoro-82M-v1.0-ONNX` q4 on CPU (`model_q4.onnx`, ~305 MB; the q8 `model_quantized.onnx` is ~92 MB), downloaded once into `$XDG_CACHE_HOME/speak-harness/kokoro`. English through `generate`; pt-BR through the shared phonemizer and `generate_from_ids`.
 
 ### Measured (M0 latency spike, done)
 
@@ -324,9 +326,11 @@ slower_speed = 0.75
 
 [keys]
 leader = "\\"
-play-pause = "space"
-replay-message = "ctrl+r"
-save-phrase = "p"
+play-pause = ["space"]
+replay-message = ["ctrl+r"]
+next-block = ["shift+l"]   # uppercase letters must be written as shift+<key>
+save-phrase = ["p"]
+quit = []                  # an empty list unbinds
 
 [wrap]
 prefix = "ctrl+g"
@@ -337,7 +341,7 @@ TTL = "T T L"
 
 ## TUI composition (OpenTUI)
 
-- `Reader`: `ScrollBoxRenderable` of block renderables. Rendering uses OpenTUI markdown/code components where they allow range styling; otherwise blocks are rendered from the same mdast with `TextRenderable` spans so the speech ranges map 1:1 to styled spans (decided in spike M0-1).
+- `Reader`: `ScrollBoxRenderable` of block renderables rendered from mdast (GFM) into `TextRenderable` chunks; every visible character keeps its markdown offset, so speech `display` ranges map 1:1 to highlighted text. `MarkdownRenderable` was rejected: it parses with `marked`, keeps no source positions, and cannot style a range. Code blocks are framed and syntax-colored (bundled ts/js/zig parsers) but never spoken.
 - `StatusLine`, `MessagesList` (`SelectRenderable`), `SessionPicker`, `Settings` (form of `Select`, `Input`, `Slider`), `KeymapEditor`, `Help` (from keymap extras), `Phrases`.
 - Wrap mode: horizontal split, `EmbeddedTerminalRenderable` (harness) + `Reader`.
 - Tests with OpenTUI's in-memory test renderer: screens render, commands dispatch, highlight follows playback events.
@@ -356,7 +360,7 @@ TTL = "T T L"
 
 ## Spikes before building (M0)
 
-1. **Highlight**: can OpenTUI's markdown component style an arbitrary source range, or do we render blocks ourselves?
+1. **Highlight**: done — OpenTUI's markdown component cannot style source ranges; the reader renders mdast itself (see TUI composition).
 2. **Wrap mode**: `Bun.spawn` with `terminal` + `EmbeddedTerminalRenderable`: input passthrough, resize, prefix key.
 3. **Latency**: done; see "Measured" under Speech engines. Remaining: listening test for the pt-BR default.
 

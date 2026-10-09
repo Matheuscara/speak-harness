@@ -1,0 +1,4 @@
+{"type":"title","v":1,"title":"Earlier work","source":"auto","updatedAt":"2026-10-01T09:05:00.000Z","pad":"    "}
+{"type":"session","version":3,"id":"01a11ba3-0000-7000-8000-000000000001","timestamp":"2026-10-01T09:00:00.000Z","cwd":"/work/demo"}
+{"type":"message","id":"b0000001","parentId":null,"timestamp":"2026-10-01T09:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"Hello."}],"timestamp":1791060639000}}
+{"type":"message","id":"b0000002","parentId":"b0000001","timestamp":"2026-10-01T09:00:02.000Z","message":{"role":"assistant","content":[{"type":"text","text":"Hello from an earlier session."}],"api":"anthropic-messages","provider":"anthropic","model":"claude-opus-5-5","usage":{"input":2,"output":40,"cacheRead":0,"cacheWrite":0,"totalTokens":42,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":1791060639212}}

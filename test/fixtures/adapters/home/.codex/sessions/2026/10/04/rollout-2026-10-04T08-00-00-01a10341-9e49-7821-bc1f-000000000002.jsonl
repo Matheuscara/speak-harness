@@ -1,0 +1,2 @@
+{"timestamp":"2026-10-04T11:00:00.000Z","ordinal":0,"type":"session_meta","payload":{"id":"01a10341-9e49-7821-bc1f-000000000002","cwd":"/other","cli_version":"0.159.1"}}
+{"timestamp":"2026-10-04T11:00:05.000Z","ordinal":1,"type":"response_item","payload":{"type":"message","id":"msg_o_1","role":"assistant","content":[{"type":"output_text","text":"Other directory."}],"phase":"final_answer"}}

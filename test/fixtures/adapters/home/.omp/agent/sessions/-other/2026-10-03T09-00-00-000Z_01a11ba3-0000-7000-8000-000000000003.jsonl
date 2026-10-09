@@ -1,0 +1,3 @@
+{"type":"title","v":1,"title":"Elsewhere","source":"auto","updatedAt":"2026-10-03T09:05:00.000Z","pad":"    "}
+{"type":"session","version":3,"id":"01a11ba3-0000-7000-8000-000000000003","timestamp":"2026-10-03T09:00:00.000Z","cwd":"/other"}
+{"type":"message","id":"c0000001","parentId":null,"timestamp":"2026-10-03T09:00:02.000Z","message":{"role":"assistant","content":[{"type":"text","text":"Other directory."}],"api":"anthropic-messages","provider":"anthropic","model":"claude-opus-5-5","usage":{"input":2,"output":40,"cacheRead":0,"cacheWrite":0,"totalTokens":42,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":1791060639212}}
