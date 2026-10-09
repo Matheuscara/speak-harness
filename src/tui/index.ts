@@ -15,6 +15,8 @@ import { WrapMode } from "./wrap/index.ts";
 export interface TuiOptions {
   /** Wrap mode (`speakh run -- <cmd>`): runs the command in an embedded terminal left of the reader. */
   wrapCommand?: string[];
+  /** Opens the session picker on start; esc keeps following the newest session of `cwd`. */
+  pickSession?: boolean;
   /** Directory whose harness sessions are listed first. Defaults to `process.cwd()`. */
   cwd?: string;
   /** Renderer to draw into (tests pass OpenTUI's test renderer). Defaults to a full-screen terminal renderer. */
@@ -26,7 +28,7 @@ export async function runTui(app: AppCore, options: TuiOptions = {}): Promise<vo
   // In wrap mode ctrl+c belongs to the harness.
   const renderer =
     options.renderer ?? (await createCliRenderer({ exitOnCtrlC: !options.wrapCommand, useMouse: true, autoFocus: false, backgroundColor: theme.bg }));
-  return new Tui(app, renderer, options.cwd ?? process.cwd(), options.wrapCommand).run();
+  return new Tui(app, renderer, options.cwd ?? process.cwd(), options.wrapCommand).run(options.pickSession === true);
 }
 
 type OverlayKind = "messages" | "sessions" | "phrases" | "palette" | "settings" | "help";
@@ -138,7 +140,7 @@ class Tui implements OverlayHost {
     this.liveTimer.unref?.();
   }
 
-  run(): Promise<void> {
+  run(pickSession = false): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       this.finish = { resolve, reject };
       const onDestroy = () => this.teardown();
@@ -162,6 +164,7 @@ class Tui implements OverlayHost {
         onFatal(error);
         return;
       }
+      if (pickSession) this.open("sessions");
       this.renderer.requestRender();
     });
   }

@@ -2,7 +2,8 @@ import { expect, test } from "bun:test";
 import { DEFAULT_VOICES, parseCliArgs, UsageError } from "../../src/cli/main.ts";
 
 test("parses every mode", () => {
-  expect(parseCliArgs([])).toEqual({ kind: "tui" });
+  expect(parseCliArgs([])).toEqual({ kind: "tui", pickSession: true });
+  expect(parseCliArgs(["--latest"])).toEqual({ kind: "tui", pickSession: false });
   expect(parseCliArgs(["--help"])).toEqual({ kind: "help" });
   expect(parseCliArgs(["--version"])).toEqual({ kind: "version" });
   expect(parseCliArgs(["run", "--", "omp", "--resume"])).toEqual({ kind: "run", command: ["omp", "--resume"] });

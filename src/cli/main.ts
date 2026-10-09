@@ -11,7 +11,7 @@ import { findVoice } from "../engine/catalog.ts";
 import { createEngineClient } from "../engine/client.ts";
 
 export type CliCommand =
-  | { kind: "tui" }
+  | { kind: "tui"; pickSession: boolean }
   | { kind: "run"; command: string[] }
   | { kind: "say"; source: string | undefined }
   | { kind: "follow" }
@@ -34,7 +34,8 @@ export const DEFAULT_VOICES: readonly string[] = [
 export const HELP = `speakh — read AI coding-harness answers aloud
 
 Usage:
-  speakh                      reader TUI following the harness session of this directory
+  speakh                      reader TUI; asks which harness session to read (esc = newest here)
+  speakh --latest             reader TUI following the newest session of this directory, no question
   speakh run -- <cmd...>      run a harness inside SpeakHarness (wrap mode)
   speakh say [file|-]         read a markdown file (or stdin) once and exit
   speakh follow               read new answers in this directory aloud, without UI
@@ -54,7 +55,10 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
   const [first, ...rest] = argv;
   switch (first) {
     case undefined:
-      return { kind: "tui" };
+      return { kind: "tui", pickSession: true };
+    case "--latest":
+      if (rest.length > 0) throw new UsageError("speakh --latest takes no arguments");
+      return { kind: "tui", pickSession: false };
     case "-h":
     case "--help":
     case "help":
@@ -143,7 +147,7 @@ function printNotices(app: AppCore): () => void {
 
 // ---------- modes ----------
 
-async function runInteractive(wrapCommand: string[] | undefined): Promise<void> {
+async function runInteractive(wrapCommand: string[] | undefined, pickSession = false): Promise<void> {
   const app = await createApp({ cwd: process.cwd() });
   const control = await startControlServer(app.commands).catch((error: unknown) => {
     console.error(`speakh: control socket unavailable: ${error instanceof Error ? error.message : String(error)}`);
@@ -152,7 +156,7 @@ async function runInteractive(wrapCommand: string[] | undefined): Promise<void> 
   try {
     // Loaded on demand: headless commands (say, follow, ctl, voices) must not load OpenTUI's native renderer.
     const { runTui } = await import("../tui/index.ts");
-    await runTui(app, wrapCommand ? { wrapCommand } : {});
+    await runTui(app, wrapCommand ? { wrapCommand } : { pickSession });
   } finally {
     await control?.close();
     await app.dispose();
@@ -275,7 +279,7 @@ export async function main(argv: readonly string[]): Promise<number> {
       return 0;
     }
     case "tui":
-      await runInteractive(undefined);
+      await runInteractive(undefined, command.pickSession);
       return 0;
     case "run":
       await runInteractive(command.command);

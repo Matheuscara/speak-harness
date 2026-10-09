@@ -16,7 +16,8 @@ bun install && bun src/cli/main.ts setup
 
 | Command | What it does |
 | --- | --- |
-| `speakh` | Reader panel: follows the newest harness session in the current directory |
+| `speakh` | Reader panel: asks which harness session to read (esc = newest in this directory) |
+| `speakh --latest` | Reader panel following the newest session here, without asking |
 | `speakh run -- omp` | Runs the harness inside SpeakHarness with the reader beside it; `ctrl+g` then a key sends commands |
 | `speakh say file.md` / `… \| speakh say -` | Reads markdown once |
 | `speakh follow` | Auto-reads new answers, no UI |
