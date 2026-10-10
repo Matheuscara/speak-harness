@@ -23,6 +23,9 @@ test("dashboard uses loopback auth, forbids foreign origins and drives a real Ap
     expect(page.status).toBe(200);
     expect(page.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
     const token = tokenOf(await page.text());
+    const icon = await fetch(`${url}favicon.svg`);
+    expect(icon.headers.get("content-type")).toContain("image/svg+xml");
+    expect(await icon.text()).toContain("H-shaped audio pulse");
     expect((await fetch(`${url}api/state`)).status).toBe(401);
     expect((await fetch(`${url}api/state`, { headers: { "x-speakh-key": token, Origin: "https://malicious.example" } })).status).toBe(403);
     const get = async (path: string) => fetch(`${url}${path}`, { headers: { "x-speakh-key": token } });

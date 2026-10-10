@@ -97,6 +97,10 @@ stdenv.mkDerivation {
       ../package.json
       ../tsconfig.json
       ../src
+      ../assets
+      ../LICENSE
+      ../THIRD_PARTY_NOTICES
+      ../README.md
     ];
   };
 
@@ -120,7 +124,7 @@ stdenv.mkDerivation {
 
     app=$out/lib/speak-harness
     mkdir -p $app
-    cp -R package.json tsconfig.json src $app/
+    cp -R package.json tsconfig.json README.md LICENSE THIRD_PARTY_NOTICES src assets $app/
     cp -R ${nodeModules}/node_modules $app/
     chmod -R u+w $app/node_modules
 
@@ -142,6 +146,10 @@ stdenv.mkDerivation {
         ]
       } ${lib.optionalString isLinux "--prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ stdenv.cc.cc.lib ]}"}
     ${lib.optionalString isLinux ''
+      mkdir -p $out/share/icons/hicolor/scalable/apps
+      cp $app/assets/icon.svg $out/share/icons/hicolor/scalable/apps/speak-harness.svg
+    ''}
+    ${lib.optionalString isLinux ''
       # Browser dashboard is the primary graphical entry; keep the terminal interface separately.
       mkdir -p $out/share/applications
       printf '%s\n' \
@@ -151,7 +159,7 @@ stdenv.mkDerivation {
         'Comment=Open the local SpeakHarness listening dashboard' \
         "Exec=$out/bin/speakh web" \
         'Terminal=false' \
-        'Icon=audio-speakers' \
+        'Icon=speak-harness' \
         'Categories=Utility;Audio;' \
         > $out/share/applications/speak-harness.desktop
       printf '%s\n' \
@@ -161,7 +169,7 @@ stdenv.mkDerivation {
         'Comment=Open the OpenTUI interface in Alacritty' \
         "Exec=${lib.getExe alacritty} -e $out/bin/speakh" \
         'Terminal=false' \
-        'Icon=utilities-terminal' \
+        'Icon=speak-harness' \
         'Categories=Utility;Audio;' \
         > $out/share/applications/speak-harness-terminal.desktop
     ''}

@@ -1,0 +1,37 @@
+SpeakHarness third-party notices
+===============================
+
+SpeakHarness source authored in this repository: MIT (see LICENSE).
+
+The installed package contains dependencies with separate licenses. Consult
+those packages' own license files for the full terms; this file is a pointer,
+not a replacement for them.
+
+- ephone 1.0.2 (eSpeak-NG phonemizer compiled to WASM): GPL-3.0-or-later.
+  https://github.com/sjmik/ephone-js
+  Its COPYING file is distributed with the npm package. Distributing a combined
+  application that includes ephone must respect its GPL terms. SpeakHarness
+  does not use the Piper GPL runtime.
+
+- @opentui/core and @opentui/keymap: MIT.
+  https://github.com/anomalyco/opentui
+
+- kokoro-js: Apache-2.0.
+  https://github.com/hexgrad/kokoro
+
+- onnxruntime-node: MIT.
+  https://github.com/microsoft/onnxruntime
+
+Models are not committed to this repository. Users download them on demand:
+
+- Kokoro-82M-v1.0-ONNX: Apache-2.0, according to the model repository metadata.
+  https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX
+
+- Piper voice models: consult each voice's MODEL_CARD for its terms and source
+  data. The faber, cadu and jeff pt-BR model cards list CC0 training datasets;
+  the edresson card lists a CC BY 4.0 dataset. A dataset license is not, by
+  itself, a license assertion about the model weights.
+  https://huggingface.co/rhasspy/piper-voices/tree/main/pt/pt_BR
+
+- The logo and icon in assets/ were created specifically for SpeakHarness and
+  are licensed under the repository's MIT License.

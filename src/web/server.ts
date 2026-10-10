@@ -292,7 +292,9 @@ export function startWebServer(
       if (url.pathname === "/app.js" && request.method === "GET")
         return asset("app.js", "text/javascript; charset=utf-8");
       if (url.pathname === "/favicon.svg" && request.method === "GET")
-        return asset("favicon.svg", "image/svg+xml");
+        return new Response(Bun.file(new URL("../../assets/icon.svg", import.meta.url)), {
+          headers: { ...securityHeaders, "Content-Type": "image/svg+xml" },
+        });
       if (url.pathname !== "/events" && !url.pathname.startsWith("/api/"))
         return new Response("Not found", { status: 404 });
       if (

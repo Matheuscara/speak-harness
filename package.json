@@ -1,9 +1,19 @@
 {
   "name": "speak-harness",
   "version": "0.1.0",
-  "description": "Read AI coding harness answers aloud from a terminal UI, locally.",
+  "description": "Local voice companion for OMP, Pi, Codex and Claude Code — graphical dashboard and OpenTUI reader.",
   "type": "module",
-  "license": "MIT",
+  "license": "MIT AND GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Matheuscara/speak-harness.git"
+  },
+  "homepage": "https://github.com/Matheuscara/speak-harness#readme",
+  "bugs": {
+    "url": "https://github.com/Matheuscara/speak-harness/issues"
+  },
+  "keywords": ["text-to-speech", "tts", "coding-agent", "local-first", "opentui", "kokoro", "piper", "claude-code", "codex"],
+  "files": ["src", "assets", "README.md", "LICENSE", "THIRD_PARTY_NOTICES"],
   "bin": {
     "speakh": "./src/cli/main.ts"
   },
@@ -13,6 +23,7 @@
   },
   "scripts": {
     "start": "bun src/cli/main.ts",
+    "web": "bun src/cli/main.ts web",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },

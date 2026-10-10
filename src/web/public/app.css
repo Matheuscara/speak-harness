@@ -91,9 +91,8 @@ a {
   white-space: nowrap;
 }
 .brand-mark {
-  font: 30px/1 var(--body);
-  color: var(--coral);
-  transform: rotate(-12deg);
+  width: 30px;
+  height: 30px;
   display: inline-block;
   filter: drop-shadow(0 0 12px #e86b5c80);
 }
@@ -1535,7 +1534,8 @@ a {
     font-size: 15px;
   }
   .brand-mark {
-    font-size: 23px;
+    width: 24px;
+    height: 24px;
   }
   .nav-item {
     padding: 8px 4px;
