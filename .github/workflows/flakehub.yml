@@ -1,9 +1,6 @@
 name: Publish tagged flake to FlakeHub
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
@@ -20,9 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag || github.ref_name }}
+          ref: ${{ inputs.tag }}
       - uses: DeterminateSystems/determinate-nix-action@v3
       - uses: DeterminateSystems/flakehub-push@main
         with:
           visibility: public
-          tag: ${{ inputs.tag || github.ref_name }}
+          tag: ${{ inputs.tag }}
