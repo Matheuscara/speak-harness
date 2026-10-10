@@ -1,7 +1,9 @@
 import { randomBytes } from "node:crypto";
+import { stat } from "node:fs/promises";
 import type { AppCore, Config } from "../core/types.ts";
 import { messageTitle } from "../core/message-title.ts";
 import { findVoice } from "../engine/catalog.ts";
+import { encodeWav } from "../audio/wav.ts";
 import {
   filterSessions,
   sessionCounts,
@@ -17,6 +19,11 @@ import { renderMarkdown } from "./markdown.ts";
 const HOST = "127.0.0.1";
 const IDLE_MS = 120_000;
 const MAX_BODY = 8192;
+const PREVIEW_TEXT = {
+  en: "Hello. This is how I read your coding agent's answers.",
+  "pt-BR":
+    "Olá. Esta é a minha voz lendo as respostas do seu assistente de programação.",
+} as const;
 
 class HttpError extends Error {
   readonly status: number;
@@ -175,6 +182,8 @@ export function startWebServer(
   let watchdog: ReturnType<typeof setInterval> | undefined;
   let pulse: ReturnType<typeof setInterval> | undefined;
   let scheduled = false;
+  let revision = 0;
+  let sessionRevision = 0;
   let closed = false;
   let server: ReturnType<typeof Bun.serve>;
   const touch = () => {
@@ -197,7 +206,8 @@ export function startWebServer(
     scheduled = true;
     queueMicrotask(() => {
       scheduled = false;
-      emit("change");
+      revision++;
+      emit("change", { revision, sessionRevision });
     });
   };
   const subscriptions = [
@@ -206,7 +216,10 @@ export function startWebServer(
         emit("notice", { level: event.level, text: event.text });
       notify();
     }),
-    app.sessions.subscribe(notify),
+    app.sessions.subscribe(() => {
+      sessionRevision++;
+      notify();
+    }),
     app.playback.subscribe(notify),
   ];
   const installations = new Map<
@@ -251,7 +264,7 @@ export function startWebServer(
 
   const securityHeaders = {
     "Content-Security-Policy":
-      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'",
+      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'",
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
     "Cache-Control": "no-store",
@@ -292,9 +305,12 @@ export function startWebServer(
       if (url.pathname === "/app.js" && request.method === "GET")
         return asset("app.js", "text/javascript; charset=utf-8");
       if (url.pathname === "/favicon.svg" && request.method === "GET")
-        return new Response(Bun.file(new URL("../../assets/icon.svg", import.meta.url)), {
-          headers: { ...securityHeaders, "Content-Type": "image/svg+xml" },
-        });
+        return new Response(
+          Bun.file(new URL("../../assets/icon.svg", import.meta.url)),
+          {
+            headers: { ...securityHeaders, "Content-Type": "image/svg+xml" },
+          },
+        );
       if (url.pathname !== "/events" && !url.pathname.startsWith("/api/"))
         return new Response("Not found", { status: 404 });
       if (
@@ -308,6 +324,18 @@ export function startWebServer(
       try {
         if (url.pathname === "/api/ping" && request.method === "GET")
           return reply({ ok: true });
+        if (url.pathname === "/api/revision" && request.method === "GET") {
+          const path = app.sessions.session?.path;
+          let activityAt: number | null = null;
+          if (path) {
+            try {
+              activityAt = (await stat(path)).mtimeMs;
+            } catch {
+              // A removed transcript will be handled by the session watcher.
+            }
+          }
+          return reply({ revision, sessionRevision, activityAt });
+        }
         if (url.pathname === "/events" && request.method === "GET") {
           let client: ReadableStreamDefaultController<Uint8Array>;
           let disconnected = false;
@@ -541,11 +569,35 @@ export function startWebServer(
           );
           return reply({ ok: true });
         }
+        if (url.pathname === "/api/voice-preview") {
+          const voice =
+            typeof data.voice === "string" ? findVoice(data.voice) : undefined;
+          if (!voice) throw new HttpError(400, "Unknown voice");
+          if (
+            !(await app.engine.voices()).some(
+              (item) => item.id === voice.id && item.installed,
+            )
+          )
+            throw new HttpError(409, "Install this voice before previewing it");
+          const audio = await app.engine.synthesize(
+            {
+              text: PREVIEW_TEXT[voice.lang],
+              voice: voice.id,
+              lang: voice.lang,
+              speed: 1,
+            },
+            request.signal,
+          );
+          return new Response(encodeWav(audio), {
+            headers: { ...securityHeaders, "Content-Type": "audio/wav" },
+          });
+        }
         if (url.pathname === "/api/install") {
           const id = data.voice;
           if (typeof id !== "string" || !findVoice(id))
             throw new HttpError(400, "Unknown voice");
-          if (installations.has(id))
+          const progress = installations.get(id);
+          if (progress && !progress.error)
             return reply({ ok: true, installing: true });
           installations.set(id, { done: 0, total: findVoice(id)!.sizeBytes });
           void app.engine

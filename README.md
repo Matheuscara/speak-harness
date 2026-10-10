@@ -44,12 +44,12 @@ The interface, controls and documentation are in English. This does not change t
 ### Nix (recommended on NixOS)
 
 ```sh
-nix profile add github:Matheuscara/speak-harness/v0.1.3
+nix profile add github:Matheuscara/speak-harness/v0.1.4
 speakh setup       # download the default local voices once
 speakh web         # open the graphical dashboard
 ```
 
-On Linux, the package also adds **SpeakHarness** (graphical dashboard) and **SpeakHarness Terminal** (OpenTUI in Alacritty) to the application menu. For a one-off run without installing: `nix run github:Matheuscara/speak-harness/v0.1.3 -- web`. Use the untagged `github:Matheuscara/speak-harness` flake only if you want the latest `main` instead of a pinned release.
+On Linux, the package also adds **SpeakHarness** (graphical dashboard) and **SpeakHarness Terminal** (OpenTUI in Alacritty) to the application menu. For a one-off run without installing: `nix run github:Matheuscara/speak-harness/v0.1.4 -- web`. Use the untagged `github:Matheuscara/speak-harness` flake only if you want the latest `main` instead of a pinned release.
 
 ### From source
 
@@ -63,11 +63,11 @@ bun src/cli/main.ts setup
 bun src/cli/main.ts web
 ```
 
-On NixOS, use the Nix installation above: it supplies Bun, Node.js and the native library paths needed by ONNX Runtime. The initial downloads are approximately **305 MB for Kokoro q4** and **63 MB for Piper Faber**. Models are cached locally; the dashboard's **Settings → Voices** tab can install other voices on demand.
+On NixOS, use the Nix installation above: it supplies Bun, Node.js and the native library paths needed by ONNX Runtime. The initial downloads are approximately **305 MB for Kokoro q4** and **63 MB for Piper Faber**. Models are cached locally. **Settings → Voices** groups English and Brazilian Portuguese voices: preview installed voices in the browser, install missing models, then choose the voice for that language.
 
 ### Already running a harness?
 
-Open the dashboard from the same project directory, go to **Sessions** and pick a conversation under **This folder**. Turn on **Read new answers automatically** under **Settings → Reading** if you want hands-free playback; it is off by default. The full Sessions page also searches all folders and filters by harness.
+Open the dashboard, go to **Sessions** and choose a conversation. **All** folders are shown by default; use **This folder** to narrow the list to the current project. Turn on **Read new answers automatically** under **Settings → Reading** if you want hands-free playback; it is off by default.
 
 ## What it does
 
@@ -75,15 +75,15 @@ Open the dashboard from the same project directory, go to **Sessions** and pick 
 | --- | --- |
 | Markdown-aware reading | Headings, lists, quotes, tables, links and inline identifiers become natural speech; fenced code is announced by language and line count. |
 | Local bilingual voices | Kokoro for English, Piper for pt-BR; manual voice override is available. No cloud TTS or cloud language detection. |
-| Live session following | Watches local transcripts and reads new final answers; skips thinking, tool results and in-between narration during auto-read. |
-| Graphical dashboard | Session search, harness filters, full Markdown transcript, playback position, voice settings and phrase collection. Served at `127.0.0.1` only. |
+| Live session following | Watches local transcripts and updates the listening page when new answers arrive. A lightweight activity check catches missed live events and indicates when the transcript changed before the next answer. Auto-read still skips thinking, tool results and in-between narration. |
+| Graphical dashboard | All-folders session search by default, full Markdown transcript, searchable answer history with Latest, playback controls, voice previews and phrase collection. Served at `127.0.0.1` only. |
 | OpenTUI | Keyboard-first reader with source-range highlighting, remappable shortcuts and a configurable settings screen. |
 | Study mode | Sentence replay, slower repeat, optional shadowing pause and saved phrases. |
 
 <p align="center">
-  <img src="assets/settings-en.webp" alt="SpeakHarness full-page Reading settings with local playback controls" width="1000">
+  <img src="assets/settings-en.webp" alt="SpeakHarness Voices settings in Brazilian Portuguese, showing sample playback, voice selection and model installation" width="1000">
 </p>
-<p align="center"><sub>The same local dashboard; settings are saved on your machine.</sub></p>
+<p align="center"><sub>Voices are grouped by language; previews play in your browser and models are installed locally.</sub></p>
 
 ## Supported harnesses
 
@@ -100,7 +100,7 @@ The capture fallback **cannot attach to an unknown harness that was already runn
 
 ## Controls
 
-**Graphical dashboard:** use the left navigation to switch between Listen, Sessions, Saved phrases and Settings. Search sessions by title or folder, select OMP/Pi/Codex/Claude filters, and choose a conversation to return to Listen. Settings have Audio, Reading, Study and Voices tabs. Keyboard shortcuts on Listen include `Space` (play/pause), `←`/`→` (sentences), `r` (repeat), `a` (auto-read) and `s` (stop); `,` opens Settings, `/` opens Sessions and `Esc` returns to Listen from another page.
+**Graphical dashboard:** use the left navigation to switch between Listen, Sessions, Saved phrases and Settings. Sessions starts at **All** folders; filter by harness, or choose **This folder**. Listen follows new answers without a manual reload; search the thread by answer title or press **Latest answer** to jump back to the newest one. Settings → Voices lets you hear installed voices, install missing ones and choose an English or pt-BR voice. Keyboard shortcuts on Listen include `Space` (play/pause), `←`/`→` (sentences), `r` (repeat), `a` (auto-read) and `s` (stop); `,` opens Settings, `/` opens Sessions and `Esc` returns to Listen from another page.
 
 **Terminal UI:** run `speakh` inside the project directory. The session picker opens first; `Tab` switches between this folder and all folders, `1`–`5` filter harnesses, `/` searches and `a` reveals technical/empty sessions. In the reader, `Space` plays/pauses, `h`/`l` move between sentences, `r` repeats, `t` enables study mode, `p` saves a phrase, `,` opens settings and `?` shows the live keymap. Keys are remappable in the TUI or in the config file.
 

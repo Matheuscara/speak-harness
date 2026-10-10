@@ -1,4 +1,7 @@
 import { expect, test } from "bun:test";
+import { mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { FakeApp } from "../tui/fake-app.ts";
 import { applySetting, startWebServer } from "../../src/web/server.ts";
 
@@ -29,6 +32,7 @@ test("dashboard uses loopback auth, forbids foreign origins and drives a real Ap
   );
   const server = startWebServer(app, { cwd: "/work/vitrum" });
   const url = server.url;
+  let tempDir: string | undefined;
   try {
     const page = await fetch(url);
     expect(page.status).toBe(200);
@@ -99,6 +103,21 @@ test("dashboard uses loopback auth, forbids foreign origins and drives a real Ap
     ).toBe(200);
     expect(app.playback.script?.messageKey).toStartWith("phrase:");
     expect(
+      (await post("api/voice-preview", { voice: "unknown:voice" })).status,
+    ).toBe(400);
+    expect(
+      (await post("api/voice-preview", { voice: "piper:pt_BR-cadu-medium" }))
+        .status,
+    ).toBe(409);
+    const preview = await post("api/voice-preview", {
+      voice: "kokoro:af_heart",
+    });
+    expect(preview.status).toBe(200);
+    expect(preview.headers.get("content-type")).toBe("audio/wav");
+    const wav = new Uint8Array(await preview.arrayBuffer());
+    expect(new TextDecoder().decode(wav.subarray(0, 4))).toBe("RIFF");
+    expect(new TextDecoder().decode(wav.subarray(8, 12))).toBe("WAVE");
+    expect(
       (await post("api/install", { voice: "piper:pt_BR-cadu-medium" })).status,
     ).toBe(202);
     const progress = await json<Voices>(await get("api/voices"));
@@ -121,10 +140,40 @@ test("dashboard uses loopback auth, forbids foreign origins and drives a real Ap
       200,
     );
     expect(app.sessions.session?.id).toBe("s-other");
+    const before = await json<{ revision: number; sessionRevision: number }>(
+      await get("api/revision"),
+    );
+    const added = app.sessions.push(
+      "A fresh answer arrived in the active conversation.",
+    );
+    app.selectMessage(added.key);
+    const after = await json<{ revision: number; sessionRevision: number }>(
+      await get("api/revision"),
+    );
+    expect(after.revision).toBeGreaterThan(before.revision);
+    expect(after.sessionRevision).toBeGreaterThan(before.sessionRevision);
+    expect((await json<Snapshot>(await get("api/state"))).html).toContain(
+      "A fresh answer arrived",
+    );
+    tempDir = await mkdtemp(join(tmpdir(), "speakh-web-"));
+    const transcript = join(tempDir, "session.jsonl");
+    await writeFile(transcript, "{}\n");
+    await utimes(transcript, new Date(1_000_000), new Date(1_000_000));
+    app.sessions.session!.path = transcript;
+    const idleBefore = await json<{ revision: number; activityAt: number }>(
+      await get("api/revision"),
+    );
+    await utimes(transcript, new Date(1_010_000), new Date(1_010_000));
+    const idleAfter = await json<{ revision: number; activityAt: number }>(
+      await get("api/revision"),
+    );
+    expect(idleAfter.activityAt).toBeGreaterThan(idleBefore.activityAt);
+    expect(idleAfter.revision).toBe(idleBefore.revision);
   } finally {
     server.close();
     await server.closed;
     await app.dispose();
+    if (tempDir) await rm(tempDir, { recursive: true, force: true });
   }
 });
 

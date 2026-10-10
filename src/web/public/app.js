@@ -17,16 +17,29 @@ let sessionData = {
   hereCount: 0,
 };
 let voiceData = { voices: [], installations: {} };
-let scope = "here";
+let scope = "all";
 let harness = "all";
 let query = "";
 let technical = false;
 let settingsTab = "audio";
+let voiceLang = "en";
+let previewVoiceId = "";
+let previewRequest;
+let previewAudio;
+let previewUrl;
 let lastMarkdown = "";
 let lastRange = "";
 let previousSession = "";
 let lastSettings = "";
 let lastMessages = "";
+let messageQuery = "";
+let lastLatestKey = "";
+let lastSelectedText = "";
+let lastSelectedKey = "";
+let lastRevision;
+let lastSessionRevision = 0;
+let lastActivityAt;
+let lastPolledSessionRevision;
 let toastTimer;
 let searchTimer;
 let refreshing = false;
@@ -103,6 +116,30 @@ function renderState(data) {
   const sessionTitle =
     s?.title || (s ? `Session ${s.id.slice(0, 8)}` : "Choose a conversation");
   previousSession = s ? sessionKey(s) : "";
+  const latestKey =
+    data.messages.findLast((item) => !item.commentary)?.key || "";
+  if (!s) el("live-status").textContent = "SELECT A SESSION";
+  else if (oldSession !== previousSession) {
+    lastActivityAt = undefined;
+    lastPolledSessionRevision = undefined;
+    messageQuery = "";
+    el("message-search").value = "";
+    lastMessages = "";
+    el("live-status").textContent = "● FOLLOWING LIVE";
+  } else if (
+    (lastLatestKey && latestKey !== lastLatestKey) ||
+    (lastSelectedKey === data.selectedKey &&
+      lastSelectedText &&
+      data.markdown !== lastSelectedText)
+  ) {
+    el("live-status").textContent =
+      data.selectedKey === latestKey
+        ? "● FOLLOWING LIVE · NEW ANSWER"
+        : "● NEW ANSWER AVAILABLE";
+  }
+  lastLatestKey = latestKey;
+  lastSelectedText = data.markdown;
+  lastSelectedKey = data.selectedKey || "";
   el("hero-session-title").textContent = sessionTitle;
   el("hero-session-meta").textContent = s
     ? `${s.harness.toUpperCase()}  ·  ${s.cwd || "local session"}`
@@ -191,31 +228,48 @@ function renderState(data) {
 }
 
 function renderMessages(messages, selected) {
-  const fingerprint = `${selected || ""}\\0${messages.map((message) => `${message.key}:${message.title}:${message.createdAt}:${message.commentary}`).join("\\0")}`;
+  const fingerprint = `${messageQuery}\\0${selected || ""}\\0${messages.map((message) => `${message.key}:${message.title}:${message.createdAt}:${message.commentary}`).join("\\0")}`;
   if (fingerprint === lastMessages) return;
   lastMessages = fingerprint;
+  const latest = messages.findLast((message) => !message.commentary);
+  el("latest-message").disabled = !latest;
   el("message-count").textContent = String(
     messages.filter((m) => !m.commentary).length,
   ).padStart(2, "0");
   const list = el("message-list");
+  const scroll = list.scrollTop;
+  const listTop = list.getBoundingClientRect().top;
+  const anchor = messageQuery
+    ? undefined
+    : [...list.querySelectorAll(".message-item")].find(
+        (item) => item.getBoundingClientRect().bottom > listTop,
+      );
+  const anchorTop = anchor?.getBoundingClientRect().top;
+  const anchorKey = anchor?.dataset.messageKey;
   list.replaceChildren();
   if (!messages.length) {
     list.append(create("p", "empty-copy", "No answers in this session yet."));
     return;
   }
-  for (const [index, message] of [...messages].reverse().entries()) {
+  const found = messages
+    .map((message, index) => ({ message, index }))
+    .filter(({ message }) =>
+      message.title.toLocaleLowerCase().includes(messageQuery),
+    );
+  if (!found.length) {
+    list.append(create("p", "empty-copy", "No answers match this search."));
+    return;
+  }
+  for (const { message, index } of found.reverse()) {
     const button = create(
       "button",
       `message-item${message.key === selected ? " selected" : ""}${message.commentary ? " commentary" : ""}`,
     );
     button.type = "button";
+    button.dataset.messageKey = message.key;
     const title = create("span", "message-title");
     title.append(
-      create(
-        "span",
-        "message-no",
-        `#${String(messages.length - index).padStart(2, "0")}`,
-      ),
+      create("span", "message-no", `#${String(index + 1).padStart(2, "0")}`),
       document.createTextNode(message.title),
     );
     button.append(
@@ -226,11 +280,20 @@ function renderMessages(messages, selected) {
         `${shortDate(message.createdAt)}  /  ${message.commentary ? "NARRATION" : "ANSWER"}`,
       ),
     );
-    button.addEventListener("click", () =>
-      action("/api/message", { key: message.key }),
-    );
+    button.addEventListener("click", async () => {
+      await action("/api/message", { key: message.key });
+      if (message.key === latest?.key)
+        el("live-status").textContent = "● FOLLOWING LIVE";
+    });
     list.append(button);
   }
+  if (anchorKey) {
+    const next = [...list.querySelectorAll(".message-item")].find(
+      (item) => item.dataset.messageKey === anchorKey,
+    );
+    if (next) list.scrollTop += next.getBoundingClientRect().top - anchorTop;
+    else list.scrollTop = scroll;
+  } else if (!messageQuery) list.scrollTop = scroll;
 }
 
 async function refreshState() {
@@ -380,6 +443,58 @@ async function refreshVoices() {
     if (snapshot && !el("settings-page").hidden) renderSettings();
   } catch (error) {
     toast(error.message, true);
+  }
+}
+function stopVoicePreview() {
+  previewRequest?.abort();
+  previewRequest = undefined;
+  previewAudio?.pause();
+  previewAudio = undefined;
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
+  previewUrl = undefined;
+  previewVoiceId = "";
+  if (settingsTab === "voices" && !el("settings-page").hidden) renderSettings();
+}
+
+async function hearVoice(id) {
+  if (previewVoiceId === id) {
+    stopVoicePreview();
+    return;
+  }
+  stopVoicePreview();
+  const controller = new AbortController();
+  previewRequest = controller;
+  previewVoiceId = id;
+  renderSettings();
+  try {
+    const response = await fetch("/api/voice-preview", {
+      method: "POST",
+      headers: { "X-Speakh-Key": key, "Content-Type": "application/json" },
+      body: JSON.stringify({ voice: id }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const result = await response.json();
+      throw new Error(result.error || `HTTP ${response.status}`);
+    }
+    const blob = await response.blob();
+    if (controller.signal.aborted) return;
+    previewUrl = URL.createObjectURL(blob);
+    const audio = new Audio(previewUrl);
+    previewAudio = audio;
+    audio.addEventListener(
+      "ended",
+      () => {
+        if (previewAudio === audio) stopVoicePreview();
+      },
+      { once: true },
+    );
+    await audio.play();
+  } catch (error) {
+    if (error.name !== "AbortError") toast(error.message, true);
+    if (previewRequest === controller) stopVoicePreview();
+  } finally {
+    if (previewRequest === controller) previewRequest = undefined;
   }
 }
 
@@ -595,25 +710,59 @@ function renderSettings() {
       c.study.slowerSpeed,
     );
   } else {
-    const head = create(
-      "p",
-      "setting-desc",
-      "Models are downloaded and synthesized on your machine. No answer is sent to a hosted service.",
+    const languageTabs = create("div", "voice-language-tabs");
+    for (const [lang, label] of [
+      ["en", "ENGLISH"],
+      ["pt-BR", "PORTUGUÊS BRASILEIRO"],
+    ]) {
+      const count = voiceData.voices.filter(
+        (voice) => voice.lang === lang,
+      ).length;
+      const button = create(
+        "button",
+        voiceLang === lang ? "selected" : "",
+        `${label} · ${count}`,
+      );
+      button.type = "button";
+      button.setAttribute("aria-pressed", String(voiceLang === lang));
+      button.addEventListener("click", () => {
+        stopVoicePreview();
+        voiceLang = lang;
+        renderSettings();
+      });
+      languageTabs.append(button);
+    }
+    panel.append(
+      languageTabs,
+      create(
+        "p",
+        "voice-intro",
+        "Listen before choosing. Samples play in this browser; speech synthesis stays on your machine.",
+      ),
     );
-    panel.append(head);
-    for (const voice of voiceData.voices) {
+    const cards = create("div", "voice-grid");
+    const chosen = c.voices.languages[voiceLang];
+    for (const voice of voiceData.voices.filter(
+      (item) => item.lang === voiceLang,
+    )) {
       const row = create("div", "voice-row");
+      const title = create("div", "voice-card-head");
+      title.append(create("strong", "", voice.label));
+      if (voice.id === chosen)
+        title.append(create("span", "voice-selected", "IN USE"));
       row.append(
-        create("strong", "", voice.label),
+        title,
         create(
           "small",
           "",
-          `${voice.engine.toUpperCase()} / ${voice.lang.toUpperCase()} / ${Math.round(voice.sizeBytes / 1e6)} MB / ${voice.license}`,
+          `${voice.engine.toUpperCase()} · ${voice.gender || "voice"} · ${Math.round(voice.sizeBytes / 1e6)} MB · ${voice.license}`,
         ),
       );
       const progress = voiceData.installations[voice.id];
       if (progress?.error)
-        row.append(create("small", "", `Failed: ${progress.error}`));
+        row.append(
+          create("small", "voice-error", `Install failed: ${progress.error}`),
+        );
       if (progress && !progress.error) {
         row.append(
           create(
@@ -627,19 +776,53 @@ function renderSettings() {
         fill.style.width = `${progress.total ? Math.floor((progress.done / progress.total) * 100) : 0}%`;
         track.append(fill);
         row.append(track);
-      } else if (voice.installed)
-        row.append(create("small", "", "● INSTALLED"));
-      else {
-        const button = create("button", "", "INSTALL LOCALLY ↓");
-        button.type = "button";
-        button.addEventListener("click", async () => {
-          await action("/api/install", { voice: voice.id });
-          await refreshVoices();
-        });
-        row.append(button);
+      } else {
+        const controls = create("div", "voice-actions");
+        if (voice.installed) {
+          const listen = create(
+            "button",
+            "",
+            previewVoiceId === voice.id ? "■ STOP SAMPLE" : "▶ HEAR SAMPLE",
+          );
+          listen.type = "button";
+          listen.dataset.voicePreview = voice.id;
+          listen.addEventListener("click", () => void hearVoice(voice.id));
+          const select = create(
+            "button",
+            "voice-use",
+            voice.id === chosen ? "CURRENT VOICE" : "USE THIS VOICE",
+          );
+          select.type = "button";
+          select.dataset.voiceSelect = voice.id;
+          select.disabled = voice.id === chosen;
+          select.addEventListener(
+            "click",
+            () =>
+              void action("/api/setting", {
+                path: `voices.languages.${voiceLang}`,
+                value: voice.id,
+              }),
+          );
+          controls.append(listen, select);
+        } else {
+          const install = create(
+            "button",
+            "",
+            progress?.error ? "RETRY INSTALL ↓" : "INSTALL VOICE ↓",
+          );
+          install.type = "button";
+          install.dataset.voiceInstall = voice.id;
+          install.addEventListener("click", async () => {
+            await action("/api/install", { voice: voice.id });
+            await refreshVoices();
+          });
+          controls.append(install);
+        }
+        row.append(controls);
       }
-      panel.append(row);
+      cards.append(row);
     }
+    panel.append(cards);
   }
 }
 const views = {
@@ -655,6 +838,7 @@ function showView(view) {
   for (const name of Object.keys(views)) {
     el(`${name}-page`).hidden = name !== view;
   }
+  if (view !== "settings" && previewVoiceId) stopVoicePreview();
   for (const button of document.querySelectorAll("[data-view]")) {
     const selected = button.dataset.view === view;
     button.classList.toggle("selected", selected);
@@ -734,6 +918,8 @@ window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
 showView(location.hash.slice(1));
 for (const button of document.querySelectorAll("[data-settings-tab]"))
   button.addEventListener("click", () => {
+    if (settingsTab === "voices" && button.dataset.settingsTab !== "voices")
+      stopVoicePreview();
     settingsTab = button.dataset.settingsTab;
     renderSettings();
   });
@@ -750,6 +936,20 @@ el("session-search").addEventListener("input", (event) => {
   query = event.target.value;
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => void refreshSessions(), 120);
+});
+el("message-search").addEventListener("input", (event) => {
+  messageQuery = event.target.value.trim().toLocaleLowerCase();
+  if (snapshot) renderMessages(snapshot.messages, snapshot.selectedKey);
+});
+el("latest-message").addEventListener("click", async () => {
+  const latest = snapshot?.messages.findLast((message) => !message.commentary);
+  if (!latest) return;
+  if (messageQuery) {
+    messageQuery = "";
+    el("message-search").value = "";
+  }
+  await action("/api/message", { key: latest.key });
+  el("live-status").textContent = "● FOLLOWING LIVE";
 });
 window.addEventListener("keydown", (event) => {
   if (event.ctrlKey || event.metaKey || event.altKey) return;
@@ -790,12 +990,52 @@ window.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
     void refreshState();
     void refreshSessions();
+    void checkLive();
   }
 });
+async function checkLive() {
+  if (document.hidden) return;
+  try {
+    const { revision, sessionRevision, activityAt } =
+      await api("/api/revision");
+    if (lastRevision === undefined) {
+      lastRevision = revision;
+      lastSessionRevision = sessionRevision;
+      lastPolledSessionRevision = sessionRevision;
+      lastActivityAt = activityAt;
+      return;
+    }
+    const changed = revision !== lastRevision;
+    const sessionsChanged = sessionRevision !== lastSessionRevision;
+    if (
+      lastActivityAt !== undefined &&
+      activityAt !== null &&
+      activityAt > (lastActivityAt ?? 0) &&
+      sessionRevision === lastPolledSessionRevision &&
+      snapshot?.session
+    )
+      el("live-status").textContent = "● SESSION ACTIVITY · WAITING FOR ANSWER";
+    lastRevision = revision;
+    lastSessionRevision = sessionRevision;
+    lastPolledSessionRevision = sessionRevision;
+    lastActivityAt = activityAt;
+    if (changed || sessionsChanged) {
+      void refreshState();
+      if (sessionsChanged && currentView === "sessions") void refreshSessions();
+    }
+  } catch {
+    // EventSource reconnects separately; this fallback retries on the next tick.
+  }
+}
 
 const stream = new EventSource(`/events?key=${encodeURIComponent(key)}`);
-stream.addEventListener("change", () => {
+stream.addEventListener("change", (event) => {
+  const { revision, sessionRevision } = JSON.parse(event.data);
+  const sessionsChanged = sessionRevision !== lastSessionRevision;
+  lastRevision = revision;
+  lastSessionRevision = sessionRevision;
   void refreshState();
+  if (sessionsChanged && currentView === "sessions") void refreshSessions();
   if (Object.keys(voiceData.installations).length) void refreshVoices();
 });
 stream.addEventListener("notice", (event) => {
@@ -811,6 +1051,8 @@ stream.onerror = () => {
   el("connection-state").innerHTML = "<i></i> RECONNECTING";
 };
 void Promise.all([refreshState(), refreshSessions(), refreshVoices()]);
+void checkLive();
+setInterval(() => void checkLive(), 2_500);
 setInterval(() => {
   if (!document.hidden) void refreshSessions();
 }, 30_000);

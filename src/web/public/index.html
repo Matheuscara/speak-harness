@@ -126,13 +126,22 @@
                 <span class="section-index">01 / DESK</span>
                 <h2>IN FOCUS<span class="coral-period">.</span></h2>
               </div>
-              <button
-                id="sessions-toggle"
-                class="outline-button mobile-sessions"
-                type="button"
-              >
-                CHOOSE SESSION ↗
-              </button>
+              <div class="desk-heading-actions">
+                <span
+                  id="live-status"
+                  class="live-status"
+                  role="status"
+                  aria-live="polite"
+                  >SELECT A SESSION</span
+                >
+                <button
+                  id="sessions-toggle"
+                  class="outline-button mobile-sessions"
+                  type="button"
+                >
+                  CHOOSE SESSION ↗
+                </button>
+              </div>
             </div>
             <div class="reader-card">
               <div class="reader-card-head">
@@ -253,8 +262,27 @@
                     <span class="section-index">03 / HISTORY</span>
                     <h3>IN THIS THREAD</h3>
                   </div>
-                  <span id="message-count" class="count-badge">0</span>
+                  <div class="history-tools">
+                    <button
+                      id="latest-message"
+                      type="button"
+                      class="history-latest"
+                    >
+                      LATEST ANSWER ↑
+                    </button>
+                    <span id="message-count" class="count-badge">0</span>
+                  </div>
                 </div>
+                <label class="history-search">
+                  <span aria-hidden="true">⌕</span>
+                  <input
+                    id="message-search"
+                    type="search"
+                    placeholder="Filter answers by title…"
+                    aria-label="Filter answers by title"
+                    autocomplete="off"
+                  />
+                </label>
                 <div id="message-list" class="message-list">
                   <p class="empty-copy">No answers in this session yet.</p>
                 </div>
@@ -285,9 +313,10 @@
                 aria-label="Search sessions"
             /></label>
             <div class="scope-tabs">
-              <button type="button" data-scope="here" class="selected">
-                THIS FOLDER</button
-              ><button type="button" data-scope="all">ALL</button>
+              <button type="button" data-scope="here">THIS FOLDER</button
+              ><button type="button" data-scope="all" class="selected">
+                ALL
+              </button>
             </div>
             <div
               id="harness-filters"
