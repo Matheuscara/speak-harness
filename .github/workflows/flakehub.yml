@@ -22,4 +22,5 @@ jobs:
       - uses: DeterminateSystems/flakehub-push@main
         with:
           visibility: public
+          spdx-expression: MIT AND GPL-3.0-or-later
           tag: ${{ inputs.tag }}
