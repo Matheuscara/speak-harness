@@ -26,6 +26,12 @@ On Linux, the Nix package also installs a **SpeakHarness** application-menu entr
 | `speakh voices list` / `install <id>` | Manage voices |
 | `speakh logs` | Shows the log (`~/.local/state/speak-harness/speakh.log`): warnings, errors, followed sessions |
 
+### Finding a conversation
+
+The opening screen starts with conversations from the current folder. Use `tab` for every folder; `1` shows all harnesses, `2` OMP, `3` Pi, `4` Codex, `5` Claude Code. Press `/` to search titles, harnesses and folders (case/accent-insensitive); `enter` returns to the results, then `enter` follows the highlighted conversation. The `a` key toggles the complete file list: old empty Claude Code runs and known title-generation/test prompts stay out of the curated view, while recently started and currently followed sessions always remain visible. The bars above the list show real session counts by harness for the current scope/search.
+
+The reader shows a segment-position rail and a subtle activity pulse while speaking. Set `SPEAKH_REDUCE_MOTION=1` or `NO_COLOR=1` to disable the pulse.
+
 Keys (all remappable in `~/.config/speak-harness/config.toml` or the settings screen `,`): `space` play/pause, `s` stop, `h`/`l` sentence, `shift+h`/`shift+l` paragraph, `j`/`k` answer, `r` repeat, `shift+r` repeat slower, `t` study mode, `enter` continue, `p` save phrase, `0`/`1`/`2` voice auto/primary/alternate, `+`/`-` speed, `tab` sessions, `m` messages, `:` palette, `?` help, `q` quit.
 
 **Study mode** (`t`) reads sentence by sentence, repeats slower, optionally leaves shadowing silence, and saves phrases to `~/.local/share/speak-harness/phrases.md`.

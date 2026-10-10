@@ -18,6 +18,8 @@ export interface SessionRef {
   /** Transcript path for file-backed harnesses. */
   path?: string;
   updatedAt: Date;
+  /** False only when the whole transcript was inspected and contains no readable assistant answer. */
+  hasReadableAnswer?: boolean;
 }
 
 export interface HarnessMessage {

@@ -118,6 +118,7 @@ class Tui implements OverlayHost {
         }
       }),
       app.playback.subscribe((state) => {
+        this.reader.setPlayback(state);
         this.renderStatus(state);
         this.renderHighlight(state);
         if (state.error) this.renderNotice();
@@ -135,6 +136,7 @@ class Tui implements OverlayHost {
     this.rebind(true);
     this.renderMessage();
     this.renderStatus();
+    this.reader.setPlayback(app.playback.state);
     this.renderNotice();
     this.liveTimer = setInterval(() => this.renderHeader(), 30_000);
     this.liveTimer.unref?.();
@@ -263,6 +265,7 @@ class Tui implements OverlayHost {
     this.reader.setHeader(
       headerLine({
         session,
+        compact: Boolean(this.wrap) && this.renderer.width < 120,
         lastActivity: lastActivity > 0 ? new Date(lastActivity) : undefined,
         live: session !== undefined && Date.now() - lastActivity < LIVE_MS,
         position: message ? { index: messages.indexOf(message), count: messages.length } : undefined,
@@ -329,6 +332,7 @@ class Tui implements OverlayHost {
     this.close();
     clearTimeout(this.noticeTimer);
     clearInterval(this.liveTimer);
+    this.reader.dispose();
     for (const cleanup of this.cleanups.splice(0).reverse()) {
       try {
         cleanup();

@@ -61,9 +61,11 @@ interface LeafNode {
 
 export class ReaderView {
   readonly root: BoxRenderable;
+  private readonly brand: TextRenderable;
   private readonly header: TextRenderable;
   private readonly scroll: ScrollBoxRenderable;
   private readonly status: TextRenderable;
+  private readonly progress: TextRenderable;
   private readonly notice: TextRenderable;
   private nodes: LeafNode[] = [];
   private shownKey: string | undefined;
@@ -71,13 +73,18 @@ export class ReaderView {
   private built = false;
   private highlight: SourceRange | undefined;
   private scrollPending = false;
+  private playback: PlaybackState | undefined;
+  private motionTimer: ReturnType<typeof setInterval> | undefined;
+  private motionStep = 0;
+  private progressWidth = 0;
 
   private readonly renderer: CliRenderer;
 
   constructor(renderer: CliRenderer) {
     this.renderer = renderer;
-    this.root = new BoxRenderable(renderer, { id: "reader", flexDirection: "column", flexGrow: 1, height: "100%" });
-    this.header = new TextRenderable(renderer, { id: "reader-header", height: 1, flexShrink: 0, wrapMode: "none", truncate: true });
+    this.root = new BoxRenderable(renderer, { id: "reader", flexDirection: "column", flexGrow: 1, height: "100%", backgroundColor: theme.bg });
+    this.brand = new TextRenderable(renderer, { id: "reader-brand", height: 1, flexShrink: 0, wrapMode: "none", truncate: true, bg: theme.overlayBg });
+    this.header = new TextRenderable(renderer, { id: "reader-header", height: 1, flexShrink: 0, wrapMode: "none", truncate: true, bg: theme.overlayBg });
     const rule = () => new TextRenderable(renderer, { height: 1, flexShrink: 0, wrapMode: "none", content: "─".repeat(400), fg: theme.border });
     this.scroll = new ScrollBoxRenderable(renderer, {
       id: "reader-scroll",
@@ -89,14 +96,22 @@ export class ReaderView {
       verticalScrollbarOptions: { visible: false },
       renderBefore: () => this.scrollToHighlight(),
     });
-    this.status = new TextRenderable(renderer, { id: "reader-status", height: 1, flexShrink: 0, wrapMode: "none", truncate: true });
+    this.progress = new TextRenderable(renderer, {
+      id: "reader-progress", height: 1, flexShrink: 0, wrapMode: "none", truncate: true,
+      bg: theme.overlayBg, renderBefore: () => this.refreshProgressWidth(),
+    });
+    this.status = new TextRenderable(renderer, { id: "reader-status", height: 1, flexShrink: 0, wrapMode: "none", truncate: true, bg: theme.overlayBg });
     this.notice = new TextRenderable(renderer, { id: "reader-notice", height: 1, flexShrink: 0, wrapMode: "none", truncate: true });
+    this.root.add(this.brand);
     this.root.add(this.header);
     this.root.add(rule());
     this.root.add(this.scroll);
     this.root.add(rule());
+    this.root.add(this.progress);
     this.root.add(this.status);
     this.root.add(this.notice);
+    this.renderBrand();
+    this.renderProgress();
   }
 
   get messageKey(): string | undefined {
@@ -113,6 +128,69 @@ export class ReaderView {
 
   setNotice(chunks: TextChunk[]): void {
     this.notice.content = new StyledText(chunks);
+  }
+
+  /** Small progress/activity surfaces update independently from the markdown tree. */
+  setPlayback(state: PlaybackState): void {
+    this.playback = state;
+    const active = state.status === "speaking" || state.status === "preparing";
+    if (active && motionAllowed() && !this.motionTimer) {
+      this.motionTimer = setInterval(() => {
+        this.motionStep = (this.motionStep + 1) % 4;
+        this.renderBrand();
+      }, 180);
+      this.motionTimer.unref?.();
+    } else if (!active || !motionAllowed()) {
+      this.stopMotion();
+    }
+    this.renderBrand();
+    this.renderProgress();
+  }
+
+  dispose(): void {
+    this.stopMotion();
+  }
+
+  private stopMotion(): void {
+    if (this.motionTimer) clearInterval(this.motionTimer);
+    this.motionTimer = undefined;
+    this.motionStep = 0;
+  }
+
+  private renderBrand(): void {
+    if (this.brand.isDestroyed) return;
+    const active = this.playback?.status === "speaking" || this.playback?.status === "preparing";
+    const symbol = active && motionAllowed() ? ["◇", "◈", "◆", "◈"][this.motionStep] : active ? "◆" : "◇";
+    this.brand.content = new StyledText([
+      chunk(" ◆ SPEAKHARNESS ", { fg: theme.accent, bold: true }),
+      chunk("/  READER", { fg: theme.muted }),
+      chunk(`    ${symbol}`, { fg: active ? theme.live : theme.dim }),
+    ]);
+  }
+
+  private refreshProgressWidth(): void {
+    const width = this.root.width;
+    if (typeof width === "number" && width !== this.progressWidth) {
+      this.progressWidth = width;
+      this.renderProgress();
+    }
+  }
+
+  private renderProgress(): void {
+    if (this.progress.isDestroyed) return;
+    const width = this.progressWidth || this.renderer.width;
+    const { complete, remaining, percent, position } = progressMeter(this.playback, width);
+    if (!this.playback?.segmentCount) {
+      this.progress.content = new StyledText([chunk("  ◇  READY", { fg: theme.accent, bold: true }), chunk("  ·  space to read", { fg: theme.muted })]);
+      return;
+    }
+    this.progress.content = new StyledText([
+      chunk("  PROGRESS  ", { fg: theme.muted }),
+      chunk(complete, { fg: theme.progress, bold: true }),
+      chunk(remaining, { fg: theme.progressTrack }),
+      chunk(`  ${percent}%`, { fg: theme.accent, bold: true }),
+      chunk(`  ${position}`, { fg: theme.muted }),
+    ]);
   }
 
   /** Re-renders only when the message or its text changed. */
@@ -217,6 +295,28 @@ export class ReaderView {
   }
 }
 
+/** NO_COLOR and dumb terminals get a stable activity mark rather than a timer. */
+export function motionAllowed(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.NO_COLOR === undefined && env.SPEAKH_REDUCE_MOTION !== "1" && env.TERM !== "dumb";
+}
+
+/** Progress is by spoken segment, never an invented audio-duration estimate. */
+export function progressMeter(state: PlaybackState | undefined, width: number): {
+  complete: string; remaining: string; percent: number; position: string;
+} {
+  const count = Math.max(0, state?.segmentCount ?? 0);
+  const current = count ? Math.min(count, Math.max(0, (state?.segmentIndex ?? 0) + 1)) : 0;
+  const percent = count ? Math.round((current / count) * 100) : 0;
+  const cells = width < 48 ? 8 : width < 80 ? 16 : 26;
+  const filled = count ? Math.round((current / count) * cells) : 0;
+  return {
+    complete: "━".repeat(filled),
+    remaining: "─".repeat(cells - filled),
+    percent,
+    position: `${current}/${count}`,
+  };
+}
+
 export function formatSpeed(speed: number): string {
   const fixed = speed.toFixed(2).replace(/0$/, "");
   return `${fixed}×`;
@@ -273,11 +373,21 @@ export interface HeaderInput {
   lastActivity: Date | undefined;
   live: boolean;
   position: { index: number; count: number } | undefined;
+  compact?: boolean;
 }
 
-export function headerLine({ session, lastActivity, live, position }: HeaderInput): TextChunk[] {
+export function headerLine({ session, lastActivity, live, position, compact }: HeaderInput): TextChunk[] {
   const sep = chunk(" · ", { fg: theme.dim });
   if (!session) return [chunk("no session", { fg: theme.muted }), sep, chunk("waiting for answers ○", { fg: theme.muted })];
+  if (compact) {
+    const name = session.title ?? session.id.slice(0, 8);
+    const title = name.length > 13 ? `${name.slice(0, 12)}…` : name;
+    const label = session.harness === "claude-code" ? "CLAUDE" : session.harness.toUpperCase();
+    return [
+      chunk(`${label} · ${title}`, { fg: theme.accent, bold: true }),
+      ...(position?.count ? [sep, chunk(`${position.index + 1}/${position.count}`, { fg: theme.muted })] : []),
+    ];
+  }
   const out: TextChunk[] = [chunk(session.harness, { fg: theme.accent, bold: true }), sep, chunk(session.title ?? session.id, { fg: theme.fg })];
   if (position && position.count > 0) out.push(sep, chunk(`answer ${position.index + 1}/${position.count}`, { fg: theme.muted }));
   if (live) out.push(sep, chunk("live ", { fg: theme.fg }), chunk("●", { fg: theme.live }));

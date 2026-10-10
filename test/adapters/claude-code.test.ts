@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { appendFile } from "node:fs/promises";
+import { appendFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createClaudeCodeAdapter } from "../../src/adapters/claude-code.ts";
 import type { HarnessAdapter, SessionRef } from "../../src/core/types.ts";
@@ -52,7 +52,22 @@ describe("claude-code adapter", () => {
       [ID, "/work/demo", "Explaining tests"],
       ["c4038643-7404-4d28-ab77-000000000002", "/other", "Hi"],
     ]);
+    expect(all.map((session) => session.hasReadableAnswer)).toEqual([true, true]);
     expect((await adapter.sessions({ cwd: "/other" })).map((session) => session.id)).toEqual(["c4038643-7404-4d28-ab77-000000000002"]);
+  });
+
+  test("marks a complete transcript with no assistant text as empty", async () => {
+    const path = join(home, ".claude/projects/-other/empty.jsonl");
+    await writeFile(path, `${JSON.stringify({
+      type: "user",
+      cwd: "/other",
+      sessionId: "empty",
+      timestamp: "2026-09-01T10:00:00Z",
+      message: { role: "user", content: "Please check this." },
+    })}\n`);
+    const adapter = createClaudeCodeAdapter(home);
+    const empty = (await adapter.sessions({})).find((session) => session.id === "empty");
+    expect(empty?.hasReadableAnswer).toBe(false);
   });
 
   test("merges lines sharing message.id and drops thinking, tools, sidechains and API errors", async () => {

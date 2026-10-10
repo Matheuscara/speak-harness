@@ -150,7 +150,6 @@ describe("reader", () => {
 
 describe("overlays", () => {
   const cases: Array<[string, string, string]> = [
-    ["tab", "\t", "Sessions"],
     ["m", "m", "Messages"],
     ["shift+p", "P", "Phrases"],
     [":", ":", "Command palette"],
@@ -172,20 +171,21 @@ describe("overlays", () => {
     });
   }
 
-  test("sessions lists this directory first and follows the chosen one", async () => {
+  test("session scope starts here, then can show other folders and follow one", async () => {
     const t = await start();
-    const frame = await t.press("\t");
-    expect(frame).toContain("● omp · vitrum");
-    expect(frame).toContain("this directory");
-    expect(frame).toContain("codex · billing api");
-    expect(frame.indexOf("omp · vitrum")).toBeLessThan(frame.indexOf("codex · billing api"));
+    const here = await t.press("\t");
+    expect(here).toContain("HERE [tab]");
+    expect(here).toContain("vitrum");
+    expect(here).not.toContain("billing api");
+    const all = await t.press("\t");
+    expect(all).toContain("ALL FOLDERS [tab]");
+    expect(all).toContain("billing api");
     await t.press("j", "\r");
     await t.settle();
     expect(t.app.sessions.followed).toEqual(["s-other"]);
     const after = await t.settle();
     expect(after).toContain("codex · billing api");
     expect(after).toContain("Paragraph 1 explains");
-    expect(after).toContain("Following codex · billing api");
   });
 
   test("messages marks narration and reads the chosen answer", async () => {

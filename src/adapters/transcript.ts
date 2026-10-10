@@ -27,6 +27,8 @@ export interface TranscriptSample {
   head: unknown[];
   /** Last complete lines, in order (only when the format asks for them). */
   tail: unknown[];
+  /** True when `head` includes the entire file, so absence of an assistant answer is conclusive. */
+  complete: boolean;
 }
 
 export interface TranscriptFormat {
@@ -39,7 +41,7 @@ export interface TranscriptFormat {
   /** Whether `describe` needs the tail of the file (titles that change, last activity). */
   readTail: boolean;
   /** `lastActivity`: time of the newest user or assistant message (sessions sort by it; file mtime is the fallback). */
-  describe(sample: TranscriptSample): { id?: string; title?: string; cwd?: string; lastActivity?: Date };
+  describe(sample: TranscriptSample): { id?: string; title?: string; cwd?: string; lastActivity?: Date; hasReadableAnswer?: boolean };
   createParser(): TranscriptParser;
 }
 
@@ -186,7 +188,7 @@ async function sample(path: string, size: number, headLines: number, readTail: b
     } else if (readTail) {
       tail = parseLines(headComplete);
     }
-    return { path, head, tail };
+    return { path, head, tail, complete: offset >= size };
   } finally {
     await handle.close();
   }
@@ -227,6 +229,7 @@ export function createTranscriptAdapter(format: TranscriptFormat, options: Trans
     };
     if (info.title) ref.title = info.title;
     if (info.cwd) ref.cwd = info.cwd;
+    if (info.hasReadableAnswer !== undefined) ref.hasReadableAnswer = info.hasReadableAnswer;
     cache.set(path, { mtimeMs: stats.mtimeMs, size: stats.size, ref });
     return ref;
   }

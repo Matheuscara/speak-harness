@@ -33,7 +33,7 @@ function typedPrompt(record: Record<string, unknown>): string | undefined {
   return promptTitle(text);
 }
 
-function describe(sample: TranscriptSample): { title?: string; cwd?: string; lastActivity?: Date } {
+function describe(sample: TranscriptSample): { title?: string; cwd?: string; lastActivity?: Date; hasReadableAnswer?: boolean } {
   let cwd: string | undefined;
   let title: string | undefined;
   for (const record of [...sample.head, ...sample.tail]) {
@@ -44,7 +44,17 @@ function describe(sample: TranscriptSample): { title?: string; cwd?: string; las
   const lastActivity = latestDate(sample.tail, (record) =>
     (record.type === "user" || record.type === "assistant") && record.isSidechain !== true ? dateField(record, "timestamp") : undefined,
   );
-  return { cwd, title: title ?? firstValue(sample.head, typedPrompt), lastActivity };
+  const hasReadableAnswer = sample.complete
+    ? sample.head.some((record) =>
+        isRecord(record) &&
+        record.type === "assistant" &&
+        record.isSidechain !== true &&
+        record.isApiErrorMessage !== true &&
+        isRecord(record.message) &&
+        joinText(record.message.content, "text") !== "",
+      )
+    : undefined;
+  return { cwd, title: title ?? firstValue(sample.head, typedPrompt), lastActivity, hasReadableAnswer };
 }
 
 interface Response {
@@ -93,7 +103,9 @@ export function createClaudeCodeAdapter(home: string, options?: TranscriptAdapte
       id: "claude-code",
       label: "Claude Code",
       files: () => findJsonl(root, 1),
-      headLines: 16,
+      // Claude transcripts here are small; reading complete files lets the picker hide conclusively empty runs.
+      // If a transcript exceeds the sampler's 1 MiB cap, absence of answers remains unknown and it stays visible.
+      headLines: 10_000,
       readTail: true,
       describe,
       createParser,

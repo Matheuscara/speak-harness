@@ -263,7 +263,7 @@ describe("wrap mode", () => {
     await t.until(() => (t.harnessRows()[0] ?? "").endsWith("$ echo captured answer"));
     t.mockInput.pressEnter();
     await t.until(() => t.harnessRows()[1] === "captured answer");
-    const frame = await t.until((f) => f.includes("answer 1/1"), 4000);
+    const frame = await t.until((f) => f.includes("CAPTURE · bash · 1/1"), 4000);
     expect(t.app.sessions.messages.map((m) => m.markdown)).toEqual(["captured answer"]);
     expect(t.app.sessions.messages[0]?.key).toStartWith("capture:capture:x");
     expect(frame.split("\n").some((line) => line.slice(HARNESS_COLS).includes("captured answer"))).toBe(true);
@@ -276,7 +276,7 @@ describe("wrap mode", () => {
     const t = await wrap([omp, "--resume"]);
     await t.until(() => t.harnessRows()[0] === "fake omp");
     expect(t.app.sessions.followed).toEqual([]);
-    expect(await t.settle()).toContain("omp · vitrum · answer 3/3");
+    expect(await t.settle()).toContain("OMP · vitrum · 3/3");
   });
 
   test("a command that cannot start rejects runTui and restores the terminal", async () => {
