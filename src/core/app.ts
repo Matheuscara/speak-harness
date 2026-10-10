@@ -13,6 +13,7 @@ import {
   unknownVoiceWarnings,
   watchConfig,
 } from "./config/index.ts";
+import { NO_LOG, type Logger } from "./log.ts";
 import { paths } from "./paths.ts";
 import { createPhraseStore } from "./phrases.ts";
 import { createPlaybackController } from "./playback/controller.ts";
@@ -51,6 +52,8 @@ export interface AppOptions {
   autoRead?: boolean;
   /** Abortable delay used between segments; injected by tests. */
   sleep?: PlaybackDeps["sleep"];
+  /** Where warnings, errors and session changes are recorded (default: nowhere). */
+  logger?: Logger;
 }
 
 /** Opens the system player on first use, so a missing player only fails when something is spoken. */
@@ -93,7 +96,11 @@ export async function createApp(options: AppOptions): Promise<AppCore> {
     }
     for (const listener of [...listeners]) listener(event);
   };
-  const notice = (level: "info" | "warning" | "error", text: string): void => emit({ type: "notice", level, text });
+  const logger = options.logger ?? NO_LOG;
+  const notice = (level: "info" | "warning" | "error", text: string): void => {
+    if (level !== "info") logger.write(level, text);
+    emit({ type: "notice", level, text });
+  };
   const isKnownVoice = (id: string): boolean => findVoice(id) !== undefined;
 
   // ---------- config ----------
@@ -185,6 +192,8 @@ export async function createApp(options: AppOptions): Promise<AppCore> {
       return;
     }
     if (event.type === "session") {
+      const session = event.session;
+      logger.write("info", session ? `following ${session.harness} session ${session.title ?? session.id} (${session.path ?? "no file"})` : "no session");
       selected = undefined;
       followNewest = true;
       autoReadQueue.length = 0;
@@ -275,8 +284,15 @@ export async function createApp(options: AppOptions): Promise<AppCore> {
       return;
     }
     const current = messages.findIndex((message) => message.key === selectedKey());
-    const target = messages[Math.min(messages.length - 1, Math.max(0, (current < 0 ? messages.length - 1 : current) + delta))];
+    const from = current < 0 ? messages.length - 1 : current;
+    const index = Math.min(messages.length - 1, Math.max(0, from + delta));
+    const target = messages[index];
     if (!target) return;
+    if (index === from && current >= 0) {
+      // At either end: keep whatever is playing instead of restarting the same answer.
+      notice("info", delta > 0 ? "This is the newest answer." : "This is the first answer.");
+      return;
+    }
     const wasSpeaking = ["preparing", "speaking", "study-wait"].includes(playback.state.status);
     selectMessage(target.key);
     if (wasSpeaking) readMessage(target.key);

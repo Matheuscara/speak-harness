@@ -85,11 +85,14 @@ export function joinText(content: unknown, partType: string): string {
 
 const PROMPT_TITLE_CHARS = 60;
 
-/** A session name made from the user's first prompt: first non-empty line, whitespace collapsed, cut at a word. */
+/**
+ * A session name made from the user's first prompt: first non-empty line, whitespace collapsed, a leading
+ * speaker label (`User:`, as some wrappers write it) dropped, cut at a word.
+ */
 export function promptTitle(text: string | undefined): string | undefined {
   const line = text
     ?.split("\n")
-    .map((part) => part.replace(/\s+/g, " ").trim())
+    .map((part) => part.replace(/\s+/g, " ").trim().replace(/^(?:user|usuário)\s*:\s*/i, ""))
     .find((part) => part !== "");
   if (!line) return undefined;
   if (line.length <= PROMPT_TITLE_CHARS) return line;

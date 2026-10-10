@@ -163,6 +163,23 @@ describe("wrap mode", () => {
     expect(t.renderer.isDestroyed).toBe(true);
   });
 
+  test("prefix then → keeps keys in the reader for several commands; esc gives them back to the harness", async () => {
+    const t = await wrap(["cat"]);
+    await t.press("g", ctrlG);
+    t.mockInput.pressArrow("right");
+    let frame = await t.settle();
+    expect(frame.split("\n")[0]).toContain("● SpeakHarness · esc back to cat");
+    expect(frame).not.toContain(" PREFIX ");
+    await t.press("t");
+    await t.press("a");
+    expect(t.app.commands.ran.slice(-2)).toEqual(["study-mode", "auto-read"]);
+    frame = await t.escape();
+    expect(frame.split("\n")[0]).toContain("● cat");
+    await t.type("z");
+    await t.until(() => t.harnessRows()[0] === "z");
+    expect(t.app.commands.ran.at(-1)).toBe("auto-read");
+  });
+
   test("prefix twice sends a literal prefix, esc cancels, unbound keys warn", async () => {
     const t = await wrap(["cat"]);
     await t.press("g", ctrlG);

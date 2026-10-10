@@ -17,6 +17,27 @@ function processAlive(pid: number): boolean {
   }
 }
 
+/** Sockets of running instances (`<pid>.sock`), newest first. */
+export async function liveSockets(dir: string): Promise<string[]> {
+  const names = await readdir(dir).catch(() => [] as string[]);
+  const live: { name: string; mtimeMs: number }[] = [];
+  for (const name of names) {
+    const match = /^(\d+)\.sock$/.exec(name);
+    if (!match || !processAlive(Number(match[1]))) continue;
+    const stats = await lstat(join(dir, name)).catch(() => undefined);
+    if (stats) live.push({ name, mtimeMs: stats.mtimeMs });
+  }
+  return live.sort((a, b) => b.mtimeMs - a.mtimeMs).map((entry) => entry.name);
+}
+
+/** Atomically points `current` at socket `name`. */
+async function pointCurrent(dir: string, name: string): Promise<void> {
+  const tempLink = join(dir, `.${CURRENT_LINK}.${process.pid}`);
+  await unlink(tempLink).catch(() => {});
+  await symlink(name, tempLink);
+  await rename(tempLink, join(dir, CURRENT_LINK));
+}
+
 /** Removes sockets left by processes that are gone, and a `current` link pointing at nothing. */
 async function removeStale(dir: string): Promise<void> {
   for (const name of await readdir(dir)) {
@@ -102,10 +123,7 @@ export async function startControlServer(
   await chmod(path, 0o600);
 
   const link = join(dir, CURRENT_LINK);
-  const tempLink = join(dir, `.${CURRENT_LINK}.${process.pid}`);
-  await unlink(tempLink).catch(() => {});
-  await symlink(name, tempLink);
-  await rename(tempLink, link);
+  await pointCurrent(dir, name);
 
   let closed: Promise<void> | undefined;
   return {
@@ -117,7 +135,11 @@ export async function startControlServer(
         for (const socket of sockets) socket.destroy();
         await stopped.promise;
         await unlink(path).catch(() => {});
-        if ((await readlink(link).catch(() => undefined)) === name) await unlink(link).catch(() => {});
+        if ((await readlink(link).catch(() => undefined)) !== name) return;
+        // Hand `current` to another running instance (e.g. `speakh follow` next to a closed TUI).
+        const next = (await liveSockets(dir)).find((other) => other !== name);
+        if (next) await pointCurrent(dir, next).catch(() => {});
+        else await unlink(link).catch(() => {});
       })();
       return closed;
     },

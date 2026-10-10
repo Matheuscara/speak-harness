@@ -13,5 +13,6 @@ export const paths = {
   cacheDir: () => join(xdg("XDG_CACHE_HOME", ".cache"), APP),
   dataDir: () => join(xdg("XDG_DATA_HOME", ".local/share"), APP),
   phrasesFile: () => join(xdg("XDG_DATA_HOME", ".local/share"), APP, "phrases.md"),
+  logFile: () => join(xdg("XDG_STATE_HOME", ".local/state"), APP, "speakh.log"),
   runtimeDir: () => join(process.env.XDG_RUNTIME_DIR || join(tmpdir(), `${APP}-${process.getuid?.() ?? "user"}`), APP),
 };

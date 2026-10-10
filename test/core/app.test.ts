@@ -184,6 +184,19 @@ describe("selection and commands", () => {
     await env.app.dispose();
   });
 
+  test("next-message on the newest answer keeps the current reading position", async () => {
+    const env = await setup();
+    env.sessions.emitMessage("One. Two. Three.", { historical: true });
+    await env.app.commands.run("play-pause");
+    await flush();
+    env.app.playback.seekSegment(1);
+    const before = env.app.playback.state.segmentIndex;
+    await env.app.commands.run("next-message");
+    await flush();
+    expect(env.app.playback.state.segmentIndex).toBe(before);
+    await env.app.dispose();
+  });
+
   test("save-phrase stores the segment being read", async () => {
     const env = await setup();
     const message = env.sessions.emitMessage("Learning by listening works.", { historical: true });

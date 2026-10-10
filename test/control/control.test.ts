@@ -61,3 +61,32 @@ test("removes sockets left by dead processes", async () => {
 test("client explains when no instance is running", async () => {
   await expect(sendControlCommand("stop", [], { dir })).rejects.toThrow("No running speakh instance");
 });
+
+test("when one instance exits, ctl reaches another one that is still running", async () => {
+  const serverModule = join(import.meta.dir, "../../src/control/server.ts");
+  const commandsModule = join(import.meta.dir, "../../src/core/commands.ts");
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      "-e",
+      `const { startControlServer } = await import(${JSON.stringify(serverModule)});
+       const { createCommandRegistry } = await import(${JSON.stringify(commandsModule)});
+       const registry = createCommandRegistry();
+       registry.register({ id: "replay-message", title: "Replay", group: "playback", run() {} });
+       await startControlServer(registry, { dir: ${JSON.stringify(dir)} });
+       console.log("ready");`,
+    ],
+    { stdout: "pipe", stderr: "inherit" },
+  );
+  try {
+    const reader = child.stdout.getReader();
+    expect(new TextDecoder().decode((await reader.read()).value)).toContain("ready");
+    // This process starts later, takes `current`, then exits.
+    const server = await startControlServer(createCommandRegistry(), { dir });
+    await server.close();
+    await sendControlCommand("replay-message", [], { dir });
+  } finally {
+    child.kill();
+    await child.exited;
+  }
+});

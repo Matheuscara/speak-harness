@@ -263,6 +263,7 @@ class Tui implements OverlayHost {
     this.reader.setHeader(
       headerLine({
         session,
+        lastActivity: lastActivity > 0 ? new Date(lastActivity) : undefined,
         live: session !== undefined && Date.now() - lastActivity < LIVE_MS,
         position: message ? { index: messages.indexOf(message), count: messages.length } : undefined,
       }),

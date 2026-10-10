@@ -18,11 +18,12 @@ bun install && bun src/cli/main.ts setup
 | --- | --- |
 | `speakh` | Reader panel: asks which harness session to read (esc = newest in this directory) |
 | `speakh --latest` | Reader panel following the newest session here, without asking |
-| `speakh run -- omp` | Runs the harness inside SpeakHarness with the reader beside it; `ctrl+g` then a key sends commands |
+| `speakh run -- omp` | Runs the harness inside SpeakHarness with the reader beside it: `ctrl+g` then a key runs one command; `ctrl+g` then `→` keeps the keyboard in the reader until `esc` or `←` |
 | `speakh say file.md` / `… \| speakh say -` | Reads markdown once |
 | `speakh follow` | Auto-reads new answers, no UI |
 | `speakh ctl replay-message` | Controls a running instance (tmux bindings, aliases) |
 | `speakh voices list` / `install <id>` | Manage voices |
+| `speakh logs` | Shows the log (`~/.local/state/speak-harness/speakh.log`): warnings, errors, followed sessions |
 
 Keys (all remappable in `~/.config/speak-harness/config.toml` or the settings screen `,`): `space` play/pause, `s` stop, `h`/`l` sentence, `shift+h`/`shift+l` paragraph, `j`/`k` answer, `r` repeat, `shift+r` repeat slower, `t` study mode, `enter` continue, `p` save phrase, `0`/`1`/`2` voice auto/primary/alternate, `+`/`-` speed, `tab` sessions, `m` messages, `:` palette, `?` help, `q` quit.
 

@@ -12,6 +12,7 @@ import {
 } from "@opentui/core";
 import type { Config, HarnessMessage, PlaybackState, SessionRef } from "../core/types.ts";
 import { chunk, intersects, layoutMarkdown, renderRuns, type Leaf, type SourceRange } from "./markdown-view.ts";
+import { relativeTime } from "./overlays/panel.ts";
 import { theme } from "./theme.ts";
 
 /** Filetypes with tree-sitter parsers bundled in @opentui/core (no download needed). */
@@ -268,15 +269,18 @@ export function statusLine({ state, config, helpKey, pending }: StatusInput): Te
 
 export interface HeaderInput {
   session: SessionRef | undefined;
+  /** Time of the newest activity in the session; within `LIVE_MS` it shows as live. */
+  lastActivity: Date | undefined;
   live: boolean;
   position: { index: number; count: number } | undefined;
 }
 
-export function headerLine({ session, live, position }: HeaderInput): TextChunk[] {
+export function headerLine({ session, lastActivity, live, position }: HeaderInput): TextChunk[] {
   const sep = chunk(" · ", { fg: theme.dim });
   if (!session) return [chunk("no session", { fg: theme.muted }), sep, chunk("waiting for answers ○", { fg: theme.muted })];
   const out: TextChunk[] = [chunk(session.harness, { fg: theme.accent, bold: true }), sep, chunk(session.title ?? session.id, { fg: theme.fg })];
   if (position && position.count > 0) out.push(sep, chunk(`answer ${position.index + 1}/${position.count}`, { fg: theme.muted }));
-  out.push(sep, chunk(live ? "live " : "idle ", { fg: live ? theme.fg : theme.muted }), chunk("●", { fg: live ? theme.live : theme.dim }));
+  if (live) out.push(sep, chunk("live ", { fg: theme.fg }), chunk("●", { fg: theme.live }));
+  else if (lastActivity) out.push(sep, chunk(relativeTime(lastActivity), { fg: theme.muted }));
   return out;
 }

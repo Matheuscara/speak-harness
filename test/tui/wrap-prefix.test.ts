@@ -60,6 +60,27 @@ describe("PrefixState", () => {
     expect(state.press(ESC)).toBe("cancel");
     expect(state.phase).toBe("idle");
   });
+
+  test("prefix then → keeps the keyboard in the reader across commands until esc, ← or the prefix", () => {
+    const RIGHT = { ...KEY, right: true };
+    const LEFT = { ...KEY, left: true };
+    for (const back of [ESC, LEFT, PREFIX]) {
+      const state = new PrefixState();
+      state.press(PREFIX);
+      expect(state.press(RIGHT)).toBe("focus-reader");
+      expect(state.readerFocused).toBe(true);
+      expect(state.press(KEY)).toBe("keymap");
+      state.resolved(false);
+      expect(state.press(KEY)).toBe("keymap");
+      state.resolved(true);
+      // Esc inside a pending sequence only cancels the sequence; the reader keeps the keyboard.
+      if (back !== ESC) expect(state.press(ESC)).toBe("cancel");
+      else state.resolved(false);
+      expect(state.press(back)).toBe("focus-harness");
+      expect(state.readerFocused).toBe(false);
+      expect(state.press(KEY)).toBe("harness");
+    }
+  });
 });
 
 describe("splitWidths", () => {

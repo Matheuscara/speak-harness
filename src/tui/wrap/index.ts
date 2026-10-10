@@ -121,7 +121,7 @@ export class WrapMode {
     const onResize = (width: number) => {
       this.readerPane.width = splitWidths(width).reader;
     };
-    const onFocus = () => this.focusChanged();
+    const onFocus = (current: Renderable | null) => this.focusChanged(current === this.terminal);
     renderer.on(CliRenderEvents.RESIZE, onResize);
     renderer.on(CliRenderEvents.FOCUSED_RENDERABLE, onFocus);
     this.offs.push(
@@ -169,14 +169,17 @@ export class WrapMode {
    */
   status(input: StatusInput): TextChunk[] {
     if (this.exit) return [chunk(`■ harness exited (${this.exit})`, { fg: theme.warning, bold: true })];
+    const badge = chunk(" PREFIX ", { bold: true }, true);
+    // Right after the prefix the status line explains the choices; playback status returns with the next key.
+    if (this.prefix.phase === "armed") return [badge, chunk(" key = command · → stay · esc cancel", { fg: theme.muted })];
     const chunks = statusLine({ ...input, helpKey: undefined });
-    return this.prefix.active ? [chunk(" PREFIX ", { bold: true }, true), chunk(" ", {}), ...chunks] : chunks;
+    return this.prefix.phase === "sequence" ? [badge, chunk(" ", {}), ...chunks] : chunks;
   }
 
-  /** An overlay closed: keys return to the harness. */
+  /** An overlay closed: keys return to the pane that had them. */
   overlayClosed(): void {
     if (this.disposed || this.terminal.isDestroyed || this.host.renderer.isDestroyed) return;
-    if (!this.exit) this.terminal.focus();
+    if (!this.exit && !this.prefix.readerFocused) this.terminal.focus();
     this.refresh();
   }
 
@@ -199,14 +202,22 @@ export class WrapMode {
       queueMicrotask(() => this.host.quit());
       return;
     }
-    const action = this.prefix.press({ prefix: this.isPrefix(event), escape: event.name === "escape" && !event.ctrl && !event.meta });
+    const plain = !event.ctrl && !event.meta && !event.shift;
+    const action = this.prefix.press({
+      prefix: this.isPrefix(event),
+      escape: event.name === "escape" && !event.ctrl && !event.meta,
+      left: plain && event.name === "left",
+      right: plain && event.name === "right",
+    });
     if (action === "keymap") {
       this.dispatching = true;
       return;
     }
     ctx.consume();
     if (action === "harness" || action === "literal") this.toHarness(event);
-    if (action === "cancel") this.host.keys.keymap.clearPendingSequence();
+    if (action === "cancel" || action === "focus-harness") this.host.keys.keymap.clearPendingSequence();
+    if (action === "focus-reader") this.terminal.blur();
+    if (action === "focus-harness") this.terminal.focus();
     if (action !== "harness") this.refresh();
   }
 
@@ -217,7 +228,8 @@ export class WrapMode {
     ctx.consume();
     this.prefix.resolved(ctx.reason === "sequence-pending");
     if (!ctx.handled) {
-      this.host.notice("warning", `${this.prefixLabel()} ${this.host.keys.format(keyFromEvent(ctx.event))} is not bound to a command`);
+      const key = this.host.keys.format(keyFromEvent(ctx.event));
+      this.host.notice("warning", `${this.prefix.readerFocused ? key : `${this.prefixLabel()} ${key}`} is not bound to a command`);
     }
     this.refresh();
   }
@@ -262,11 +274,13 @@ export class WrapMode {
     this.refresh();
   }
 
-  private focusChanged(): void {
+  /** `terminalFocused` comes from the event: `terminal.focused` is not updated yet while blurring. */
+  private focusChanged(terminalFocused: boolean): void {
     if (this.disposed) return;
-    // Clicking into the harness pane while an overlay is open returns to the harness.
-    if (this.terminal.focused && this.host.overlayOpen()) this.host.closeOverlay();
-    this.renderTitles();
+    // Clicking into the harness pane returns the keyboard to it (closing any overlay).
+    if (terminalFocused && this.host.overlayOpen()) this.host.closeOverlay();
+    if (terminalFocused && this.prefix.readerFocused) this.prefix.reset();
+    this.refresh();
   }
 
   // ---------- capture ----------
@@ -310,7 +324,10 @@ export class WrapMode {
     this.readerTitle.bg = readerKeys ? theme.selectedBg : theme.bg;
     this.readerTitle.content = new StyledText(
       readerKeys
-        ? [chunk(" ● SpeakHarness", on), chunk(this.prefix.active ? " · next key: command" : ` · esc back to ${this.name}`, { fg: theme.selectedFg })]
+        ? [
+            chunk(" ● SpeakHarness", on),
+            chunk(this.prefix.phase === "armed" ? " · next key: command" : ` · esc back to ${this.name}`, { fg: theme.selectedFg }),
+          ]
         : [
             chunk(" ○ SpeakHarness", { fg: theme.muted }),
             chunk(help ? ` · ${this.prefixLabel()} ${this.host.keys.format(help)} keys` : ` · ${this.prefixLabel()} prefix`, { fg: theme.dim }),

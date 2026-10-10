@@ -5,8 +5,10 @@ import { sendControlCommand } from "../control/client.ts";
 import { startControlServer } from "../control/server.ts";
 import { createApp } from "../core/app.ts";
 import { COMMAND_IDS, DEFAULT_CONFIG } from "../core/config/index.ts";
+import { createFileLogger, describeError, NO_LOG, type Logger } from "../core/log.ts";
+import { paths } from "../core/paths.ts";
 import { resolveVoice } from "../core/playback/voices.ts";
-import type { AppCore, EngineClient, HarnessMessage, Lang } from "../core/types.ts";
+import type { AppCore, EngineClient, HarnessMessage, Lang, SessionRef } from "../core/types.ts";
 import { findVoice } from "../engine/catalog.ts";
 import { createEngineClient } from "../engine/client.ts";
 
@@ -19,8 +21,12 @@ export type CliCommand =
   | { kind: "voices-list" }
   | { kind: "voices-install"; voice: string }
   | { kind: "setup" }
+  | { kind: "logs" }
   | { kind: "help" }
   | { kind: "version" };
+
+/** Set by `main` for the modes that run the app; errors and session changes go there. */
+let logger: Logger = NO_LOG;
 
 export class UsageError extends Error {
   override name = "UsageError";
@@ -43,12 +49,14 @@ Usage:
   speakh voices [list]        list voices and whether they are installed
   speakh voices install <id>  download a voice (e.g. piper:pt_BR-faber-medium)
   speakh setup                install the default voices (${DEFAULT_VOICES.join(", ")})
+  speakh logs                 show where the log is and its last lines
   speakh --help | --version
 
 Commands for ctl and key bindings:
   ${COMMAND_IDS.join(", ")}
 
 Config: $XDG_CONFIG_HOME/speak-harness/config.toml (created when settings are saved).
+Log:    $XDG_STATE_HOME/speak-harness/speakh.log (warnings, errors, followed sessions).
 `;
 
 export function parseCliArgs(argv: readonly string[]): CliCommand {
@@ -59,6 +67,9 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
     case "--latest":
       if (rest.length > 0) throw new UsageError("speakh --latest takes no arguments");
       return { kind: "tui", pickSession: false };
+    case "logs":
+      if (rest.length > 0) throw new UsageError("speakh logs takes no arguments");
+      return { kind: "logs" };
     case "-h":
     case "--help":
     case "help":
@@ -148,8 +159,9 @@ function printNotices(app: AppCore): () => void {
 // ---------- modes ----------
 
 async function runInteractive(wrapCommand: string[] | undefined, pickSession = false): Promise<void> {
-  const app = await createApp({ cwd: process.cwd() });
+  const app = await createApp({ cwd: process.cwd(), logger });
   const control = await startControlServer(app.commands).catch((error: unknown) => {
+    logger.write("warning", `control socket unavailable: ${describeError(error)}`);
     console.error(`speakh: control socket unavailable: ${error instanceof Error ? error.message : String(error)}`);
     return undefined;
   });
@@ -165,7 +177,7 @@ async function runInteractive(wrapCommand: string[] | undefined, pickSession = f
 
 async function say(source: string | undefined): Promise<number> {
   const markdown = await readMarkdown(source);
-  const app = await createApp({ cwd: process.cwd(), followSessions: false, autoRead: false });
+  const app = await createApp({ cwd: process.cwd(), followSessions: false, autoRead: false, logger });
   const stopNotices = printNotices(app);
   try {
     const message = app.sessions.addManual(markdown);
@@ -210,22 +222,26 @@ async function say(source: string | undefined): Promise<number> {
 
 async function follow(): Promise<void> {
   const cwd = process.cwd();
-  const app = await createApp({ cwd, autoRead: true });
+  const app = await createApp({ cwd, autoRead: true, logger });
   const stopNotices = printNotices(app);
   const control = await startControlServer(app.commands).catch((error: unknown) => {
+    logger.write("warning", `control socket unavailable: ${describeError(error)}`);
     console.error(`speakh: control socket unavailable: ${error instanceof Error ? error.message : String(error)}`);
     return undefined;
   });
+  const describeSession = (session: SessionRef | undefined): string =>
+    session ? `Following ${session.harness} session ${session.title ?? session.id}` : `No harness session found for ${cwd} yet`;
   const stopSessions = app.sessions.subscribe((event) => {
     if (event.type === "session") {
-      const session = event.session;
-      console.log(session ? `Following ${session.harness} session ${session.title ?? session.id}` : `No harness session found for ${cwd} yet`);
+      console.log(describeSession(event.session));
     } else if (event.type === "message" && event.message.final && !event.message.historical) {
       const time = event.message.createdAt.toTimeString().slice(0, 5);
       console.log(`${time} ${event.message.session.harness} · ${firstLine(event.message)}`);
     }
   });
   console.log(`Reading new answers in ${cwd} aloud (ctrl+c to stop)`);
+  // The session may already have been found before this subscription.
+  if (app.sessions.session) console.log(describeSession(app.sessions.session));
   try {
     await waitForSignal();
   } finally {
@@ -266,18 +282,41 @@ async function installVoices(ids: readonly string[]): Promise<void> {
   }
 }
 
+function readVersion(): string {
+  const pkg: unknown = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
+  return typeof pkg === "object" && pkg !== null && "version" in pkg ? String(pkg.version) : "unknown";
+}
+
+const LOG_TAIL_LINES = 60;
+
+async function showLogs(): Promise<void> {
+  const path = paths.logFile();
+  console.log(`Log: ${path}`);
+  const text = await readFile(path, "utf8").catch(() => undefined);
+  if (text === undefined) {
+    console.log("(empty: nothing has been logged yet)");
+    return;
+  }
+  const lines = text.trimEnd().split("\n");
+  console.log(lines.slice(-LOG_TAIL_LINES).join("\n"));
+}
+
 export async function main(argv: readonly string[]): Promise<number> {
   const command = parseCliArgs(argv);
+  if (command.kind === "tui" || command.kind === "run" || command.kind === "say" || command.kind === "follow") {
+    logger = createFileLogger(paths.logFile());
+    logger.write("info", `start \`speakh ${argv.join(" ")}\` · speakh ${readVersion()} · bun ${Bun.version} · cwd ${process.cwd()}`);
+  }
   switch (command.kind) {
     case "help":
       process.stdout.write(HELP);
       return 0;
-    case "version": {
-      const pkg: unknown = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
-      const version = typeof pkg === "object" && pkg !== null && "version" in pkg ? String(pkg.version) : "unknown";
-      console.log(`speakh ${version}`);
+    case "version":
+      console.log(`speakh ${readVersion()}`);
       return 0;
-    }
+    case "logs":
+      await showLogs();
+      return 0;
     case "tui":
       await runInteractive(undefined, command.pickSession);
       return 0;
@@ -310,6 +349,7 @@ if (import.meta.main) {
   main(process.argv.slice(2)).then(
     (code) => process.exit(code),
     (error: unknown) => {
+      logger.write("error", describeError(error));
       console.error(`speakh: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(error instanceof UsageError ? 2 : 1);
     },
