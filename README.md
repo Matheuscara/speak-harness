@@ -34,6 +34,8 @@ The reader shows a segment-position rail and a subtle activity pulse while speak
 
 Keys (all remappable in `~/.config/speak-harness/config.toml` or the settings screen `,`): `space` play/pause, `s` stop, `h`/`l` sentence, `shift+h`/`shift+l` paragraph, `j`/`k` answer, `r` repeat, `shift+r` repeat slower, `t` study mode, `enter` continue, `p` save phrase, `0`/`1`/`2` voice auto/primary/alternate, `+`/`-` speed, `tab` sessions, `m` messages, `:` palette, `?` help, `q` quit.
 
+**Settings are visible in the reader footer:** click `⚙ SETTINGS [,]` or press `,`. The settings screen has `1 Audio`, `2 Reading`, `3 Study`, `4 Keys` tabs (clickable too). Playback speed is the first Audio setting: `←`/`→` or `-`/`+` adjusts it in 0.1× steps and saves it to the config. By contrast, `-`/`+` on the reader screen only changes speed for the current session. Audio also selects voices; Reading controls auto-read and table handling; Study sets pauses and shadowing; Keys edits bindings.
+
 **Study mode** (`t`) reads sentence by sentence, repeats slower, optionally leaves shadowing silence, and saves phrases to `~/.local/share/speak-harness/phrases.md`.
 
 ## Docs

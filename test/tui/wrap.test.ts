@@ -110,8 +110,9 @@ describe("wrap mode", () => {
     expect(t.harnessRows()[0]).toBe("hello");
     // Not a known harness: the reader follows the capture session.
     expect(t.app.sessions.session?.harness).toBe("capture");
-    expect(frame).toContain("capture · bash");
-    expect(frame).toContain("■ — · af_heart · 1.0× · –");
+    expect(frame).toContain("CAPTURE · bash");
+    expect(frame).toContain("READY  │  1.0×");
+    expect(frame).toContain("⚙ [,]");
 
     const exited = await t.until((f) => f.includes("harness exited (code 0)"));
     expect(exited.split("\n")[0]).toContain(" ■ bash · exited (code 0) · press any key to quit");

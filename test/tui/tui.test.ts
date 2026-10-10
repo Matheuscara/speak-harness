@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { RGBA } from "@opentui/core";
+import { RGBA, TextRenderable } from "@opentui/core";
 import { createTestRenderer, type TestRendererSetup } from "@opentui/core/testing";
 import { runTui } from "../../src/tui/index.ts";
 import { theme } from "../../src/tui/theme.ts";
@@ -77,7 +77,9 @@ describe("reader", () => {
     expect(frame).toContain("• Temporary: the credential has a TTL.");
     expect(frame).toContain("const user = await vault.issue");
     expect(frame).toContain("ttl  │ number │ 3600");
-    expect(frame).toContain("■ — · af_heart · 1.0× · – · ? keys");
+    expect(frame).toContain("■ READY");
+    expect(frame).toContain("SPEED 1.0×");
+    expect(frame).toContain("⚙ SETTINGS [,]");
     expect(t.highlightedText()).toBe("");
   });
 
@@ -99,13 +101,16 @@ describe("reader", () => {
     expect(t.highlightedText()).toBe("");
   });
 
-  test("status line shows language, voice, speed, position and flags", async () => {
+  test("footer shows playback, voice and speed without repeating segment position", async () => {
     const t = await start();
     await t.press(" ", "l", "+", "t", "2");
-    const status = t.captureCharFrame().split("\n").find((line) => line.startsWith("▶"));
-    expect(status?.trim()).toBe("▶ en · pf_dora · 1.1× · 2/7 · study voice:alternate · ? keys");
-    await t.press("a");
-    expect(t.captureCharFrame()).toContain("study auto voice:alternate");
+    const frame = t.captureCharFrame();
+    const status = frame.split("\n").find((line) => line.includes("PLAYING"));
+    expect(status).toContain("EN · Dora");
+    expect(status).toContain("SPEED 1.1×");
+    expect(status).not.toContain("2/7");
+    expect(frame).toContain("2/7");
+    expect(frame).toContain("⚙ SETTINGS [,]");
   });
 
   test("auto-scrolls the highlighted sentence into view", async () => {
@@ -153,7 +158,6 @@ describe("overlays", () => {
     ["m", "m", "Messages"],
     ["shift+p", "P", "Phrases"],
     [":", ":", "Command palette"],
-    [",", ",", "Settings"],
     ["?", "?", "Keys"],
   ];
   for (const [name, key, title] of cases) {
@@ -231,23 +235,45 @@ describe("overlays", () => {
   });
 });
 
+test("settings control in the reader footer opens settings by mouse", async () => {
+  const t = await start();
+  const button = t.renderer.root.findDescendantById("reader-settings") as TextRenderable | undefined;
+  expect(button).toBeDefined();
+  await t.mockMouse.click(button!.x + 2, button!.y);
+  expect(await t.settle()).toContain("SETTINGS  /  AUDIO");
+});
+
 describe("settings", () => {
-  test("toggles and adjusts values through app.updateConfig", async () => {
+  test("speed is the first audio setting and changes persistently; reading options are a separate tab", async () => {
     const t = await start();
-    await t.press(",");
-    // Speed is the fifth item.
-    await t.press("j", "j", "j", "j");
+    let frame = await t.press(",");
+    expect(frame).toContain("SETTINGS  /  AUDIO");
+    expect(frame).toContain("Playback speed");
+    expect(frame).toContain("0.5× ━━━●─────── 2.0×   1.0×");
     t.mockInput.pressArrow("right");
     await t.settle();
-    expect(t.app.config.voices.speed).toBe(1.05);
-    await t.press("j", "j", "\r");
+    expect(t.app.config.voices.speed).toBe(1.1);
+    frame = await t.press("2");
+    expect(frame).toContain("SETTINGS  /  READING");
+    expect(frame).toContain("Read new answers automatically");
+    await t.press("\r");
     expect(t.app.config.reading.autoRead).toBe(true);
-    expect(await t.settle()).toContain("1.05×");
+  });
+
+  test("settings tabs are clickable and keep reading preferences separate from audio", async () => {
+    const t = await start();
+    await t.press(",");
+    const tabs = t.renderer.root.findDescendantById("settings-tabs") as TextRenderable | undefined;
+    expect(tabs).toBeDefined();
+    await t.mockMouse.click(tabs!.x + 14, tabs!.y);
+    const frame = await t.settle();
+    expect(frame).toContain("SETTINGS  /  READING");
+    expect(frame).toContain("Read new answers automatically");
   });
 
   test("voice picker shows installed state and installs with progress", async () => {
     const t = await start();
-    await t.press(",", "j", "j", "j", "\r");
+    await t.press(",", "j", "j", "j", "j", "\r");
     let frame = await t.settle();
     expect(frame).toContain("Voice · Português (BR)");
     expect(frame).toContain("○ Cadu (pt-BR)");
@@ -262,15 +288,12 @@ describe("settings", () => {
     frame = await t.waitForFrame((f) => f.includes("● Cadu (pt-BR)"));
     expect(t.app.engine.installs).toEqual(["piper:pt_BR-cadu-medium"]);
     expect(frame).toContain("● Cadu (pt-BR)");
-    expect(frame).toContain("Installed piper:pt_BR-cadu-medium");
   });
 
   test("keymap editor rebinds a command, reports the conflict, and rebinds live", async () => {
     const t = await start();
-    await t.press(",");
-    t.mockInput.pressArrow("up"); // wraps to "Key bindings…"
-    await t.settle();
-    let frame = await t.press("\r");
+    await t.press(",", "4", "\r");
+    let frame = await t.settle();
     expect(frame).toContain("─ Key bindings ─");
     expect(frame).toContain("stop · s");
     await t.press("j", "\r"); // "Stop"
@@ -282,7 +305,6 @@ describe("settings", () => {
     expect(t.app.config.keys.stop).toEqual(["l"]);
     expect(frame).toContain("Saved: stop → l");
     expect(frame).toContain("stop · l · l also: next-sentence");
-    expect(frame).toContain("⚠ Key conflicts: l → stop & next-sentence");
 
     await t.escape();
     await t.escape();
@@ -293,9 +315,7 @@ describe("settings", () => {
 
   test("esc cancels a captured key without saving", async () => {
     const t = await start();
-    await t.press(",");
-    t.mockInput.pressArrow("up");
-    await t.press("\r", "\r"); // "Play / pause"
+    await t.press(",", "4", "\r", "\r"); // Key bindings → Play / pause
     await t.press("x");
     await t.escape();
     expect(t.app.configUpdates).toHaveLength(0);

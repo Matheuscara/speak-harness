@@ -65,6 +65,9 @@ export class ReaderView {
   private readonly header: TextRenderable;
   private readonly scroll: ScrollBoxRenderable;
   private readonly status: TextRenderable;
+  private readonly footer: BoxRenderable;
+  private readonly settingsButton: TextRenderable;
+  private readonly helpButton: TextRenderable;
   private readonly progress: TextRenderable;
   private readonly notice: TextRenderable;
   private nodes: LeafNode[] = [];
@@ -77,6 +80,11 @@ export class ReaderView {
   private motionTimer: ReturnType<typeof setInterval> | undefined;
   private motionStep = 0;
   private progressWidth = 0;
+  private settingsAction: (() => void) | undefined;
+  private helpAction: (() => void) | undefined;
+  private settingsKey = ",";
+  private helpKey = "?";
+  private compact = false;
 
   private readonly renderer: CliRenderer;
 
@@ -100,7 +108,19 @@ export class ReaderView {
       id: "reader-progress", height: 1, flexShrink: 0, wrapMode: "none", truncate: true,
       bg: theme.overlayBg, renderBefore: () => this.refreshProgressWidth(),
     });
-    this.status = new TextRenderable(renderer, { id: "reader-status", height: 1, flexShrink: 0, wrapMode: "none", truncate: true, bg: theme.overlayBg });
+    this.footer = new BoxRenderable(renderer, { id: "reader-controls", flexDirection: "row", height: 1, flexShrink: 0, backgroundColor: theme.overlayBg });
+    this.status = new TextRenderable(renderer, { id: "reader-status", height: 1, flexGrow: 1, flexShrink: 1, wrapMode: "none", truncate: true, bg: theme.overlayBg });
+    this.settingsButton = new TextRenderable(renderer, {
+      id: "reader-settings", height: 1, width: 17, flexShrink: 0, wrapMode: "none",
+      fg: theme.accent, bg: theme.overlayBg, onMouseUp: () => this.settingsAction?.(),
+    });
+    this.helpButton = new TextRenderable(renderer, {
+      id: "reader-help", height: 1, width: 9, flexShrink: 0, wrapMode: "none",
+      fg: theme.muted, bg: theme.overlayBg, onMouseUp: () => this.helpAction?.(),
+    });
+    this.footer.add(this.status);
+    this.footer.add(this.settingsButton);
+    this.footer.add(this.helpButton);
     this.notice = new TextRenderable(renderer, { id: "reader-notice", height: 1, flexShrink: 0, wrapMode: "none", truncate: true });
     this.root.add(this.brand);
     this.root.add(this.header);
@@ -108,10 +128,11 @@ export class ReaderView {
     this.root.add(this.scroll);
     this.root.add(rule());
     this.root.add(this.progress);
-    this.root.add(this.status);
+    this.root.add(this.footer);
     this.root.add(this.notice);
     this.renderBrand();
     this.renderProgress();
+    this.setControlKeys(",", "?");
   }
 
   get messageKey(): string | undefined {
@@ -126,6 +147,29 @@ export class ReaderView {
     this.status.content = new StyledText(chunks);
   }
 
+
+  /** Buttons are mouse-clickable; the printed keys are still the primary terminal controls. */
+  setControlActions(settings: () => void, help: () => void): void {
+    this.settingsAction = settings;
+    this.helpAction = help;
+  }
+
+  setCompact(compact: boolean): void {
+    if (this.compact === compact) return;
+    this.compact = compact;
+    this.setControlKeys(this.settingsKey, this.helpKey);
+    this.renderProgress();
+  }
+
+  setControlKeys(settings: string, help: string): void {
+    this.settingsKey = settings;
+    this.helpKey = help;
+    const compact = this.compact || (this.progressWidth || this.renderer.width) < 48;
+    this.settingsButton.width = compact ? 7 : 17;
+    this.helpButton.width = compact ? 0 : 9;
+    this.settingsButton.content = compact ? `⚙ [${settings}]` : ` ⚙ SETTINGS [${settings}]`;
+    this.helpButton.content = ` ? [${help}]`;
+  }
   setNotice(chunks: TextChunk[]): void {
     this.notice.content = new StyledText(chunks);
   }
@@ -172,13 +216,14 @@ export class ReaderView {
     const width = this.root.width;
     if (typeof width === "number" && width !== this.progressWidth) {
       this.progressWidth = width;
+      this.setControlKeys(this.settingsKey, this.helpKey);
       this.renderProgress();
     }
   }
 
   private renderProgress(): void {
     if (this.progress.isDestroyed) return;
-    const width = this.progressWidth || this.renderer.width;
+    const width = this.compact ? 36 : this.progressWidth || this.renderer.width;
     const { complete, remaining, percent, position } = progressMeter(this.playback, width);
     if (!this.playback?.segmentCount) {
       this.progress.content = new StyledText([chunk("  ◇  READY", { fg: theme.accent, bold: true }), chunk("  ·  space to read", { fg: theme.muted })]);
@@ -328,10 +373,10 @@ export function voiceName(voice: string): string {
 
 const STATUS_ICON: Record<PlaybackState["status"], string> = {
   idle: "■",
-  preparing: "…",
+  preparing: "◌",
   speaking: "▶",
   paused: "⏸",
-  "study-wait": "⏵",
+  "study-wait": "◇",
 };
 
 export interface StatusInput {
@@ -339,31 +384,39 @@ export interface StatusInput {
   config: Config;
   helpKey: string | undefined;
   pending: string;
+  compact?: boolean;
 }
 
-export function statusLine({ state, config, helpKey, pending }: StatusInput): TextChunk[] {
-  const lang = state.lang ?? "—";
-  const voice = voiceName(state.voice ?? (state.lang ? config.voices.languages[state.lang] : config.voices.primary));
-  const position = state.segmentCount > 0 ? `${Math.min(state.segmentIndex + 1, state.segmentCount)}/${state.segmentCount}` : "–";
-  const sep = chunk(" · ", { fg: theme.dim });
+function shortVoice(voice: string): string {
+  const raw = voiceName(voice);
+  const piper = /^pt_BR-([^-]+)-/.exec(raw);
+  const name = piper ? piper[1] : raw.split("_").at(-1);
+  return name ? name[0]!.toUpperCase() + name.slice(1) : raw;
+}
+
+const STATUS_LABEL: Record<PlaybackState["status"], string> = {
+  idle: "READY",
+  preparing: "LOADING",
+  speaking: "PLAYING",
+  paused: "PAUSED",
+  "study-wait": "STUDY WAIT",
+};
+
+export function statusLine({ state, config, pending, compact }: StatusInput): TextChunk[] {
+  const active = state.status === "speaking" || state.status === "preparing";
+  const lang = state.lang?.toUpperCase() ?? "—";
+  const voice = shortVoice(state.voice ?? (state.lang ? config.voices.languages[state.lang] : config.voices.primary));
+  const sep = chunk("  │  ", { fg: theme.border });
   const out: TextChunk[] = [
-    chunk(`${STATUS_ICON[state.status]} `, { fg: state.status === "idle" ? theme.muted : theme.live, bold: true }),
-    chunk(lang, { fg: theme.fg }),
+    chunk(` ${STATUS_ICON[state.status]} ${STATUS_LABEL[state.status]}`, { fg: active ? theme.live : theme.accent, bold: true }),
     sep,
-    chunk(voice, { fg: theme.fg }),
-    sep,
-    chunk(formatSpeed(state.speed), { fg: theme.fg }),
-    sep,
-    chunk(position, { fg: theme.fg }),
   ];
-  const flags = [
-    state.studyMode ? "study" : undefined,
-    config.reading.autoRead ? "auto" : undefined,
-    state.voiceOverride !== "auto" ? `voice:${state.voiceOverride}` : undefined,
-  ].filter((flag): flag is string => flag !== undefined);
-  if (flags.length > 0) out.push(sep, chunk(flags.join(" "), { fg: theme.accent }));
-  if (pending) out.push(sep, chunk(`${pending}…`, { fg: theme.warning }));
-  if (helpKey) out.push(sep, chunk(`${helpKey} keys`, { fg: theme.muted }));
+  if (!compact) out.push(chunk("SPEED ", { fg: theme.muted }));
+  out.push(chunk(formatSpeed(state.speed), { fg: theme.fg, bold: true }));
+  if (!compact) out.push(chunk(" [-/+]", { fg: theme.dim }), sep, chunk(lang, { fg: theme.accent, bold: true }), chunk(` · ${voice}`, { fg: theme.fg }));
+  if (state.studyMode) out.push(chunk(compact ? " · STUDY" : "  ·  STUDY", { fg: theme.warning }));
+  if (config.reading.autoRead) out.push(chunk(compact ? " · AUTO" : "  ·  AUTO", { fg: theme.live }));
+  if (pending) out.push(chunk(`  ${pending}…`, { fg: theme.warning }));
   return out;
 }
 

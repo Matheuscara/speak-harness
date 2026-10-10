@@ -72,6 +72,7 @@ class Tui implements OverlayHost {
     // Layout: a horizontal root so wrap mode can add the harness pane left of the reader.
     const layout = new BoxRenderable(renderer, { id: "layout", flexDirection: "row", width: "100%", height: "100%", backgroundColor: theme.bg });
     this.reader = new ReaderView(renderer);
+    this.reader.setControlActions(() => this.open("settings"), () => this.open("help"));
     renderer.root.add(layout);
 
     this.keys = new KeyController(renderer, {
@@ -282,7 +283,17 @@ class Tui implements OverlayHost {
 
   private renderStatus(state: PlaybackState = this.app.playback.state): void {
     const helpKey = this.app.config.keys.help?.[0];
-    const input = { state, config: this.app.config, helpKey: helpKey ? this.keys.format(helpKey) : undefined, pending: this.pending };
+    const settingsKey = this.app.config.keys.settings?.[0];
+    const compact = Boolean(this.wrap) && this.renderer.width < 120;
+    this.reader.setCompact(compact);
+    this.reader.setControlKeys(settingsKey ? this.keys.format(settingsKey) : "—", helpKey ? this.keys.format(helpKey) : "—");
+    const input = {
+      state,
+      config: this.app.config,
+      helpKey: helpKey ? this.keys.format(helpKey) : undefined,
+      pending: this.pending,
+      compact,
+    };
     this.reader.setStatus(this.wrap ? this.wrap.status(input) : statusLine(input));
   }
 
