@@ -44,12 +44,12 @@ The interface, controls and documentation are in English. This does not change t
 ### Nix (recommended on NixOS)
 
 ```sh
-nix profile add github:Matheuscara/speak-harness/v0.1.0
+nix profile add github:Matheuscara/speak-harness/v0.1.1
 speakh setup       # download the default local voices once
 speakh web         # open the graphical dashboard
 ```
 
-On Linux, the package also adds **SpeakHarness** (graphical dashboard) and **SpeakHarness Terminal** (OpenTUI in Alacritty) to the application menu. For a one-off run without installing: `nix run github:Matheuscara/speak-harness/v0.1.0 -- web`. Use the untagged `github:Matheuscara/speak-harness` flake only if you want the latest `main` instead of a pinned release.
+On Linux, the package also adds **SpeakHarness** (graphical dashboard) and **SpeakHarness Terminal** (OpenTUI in Alacritty) to the application menu. For a one-off run without installing: `nix run github:Matheuscara/speak-harness/v0.1.1 -- web`. Use the untagged `github:Matheuscara/speak-harness` flake only if you want the latest `main` instead of a pinned release.
 
 ### From source
 
