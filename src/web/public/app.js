@@ -138,7 +138,7 @@ function renderState(data) {
     data.activeText || data.script?.segments[index ? index - 1 : 0]?.text;
   el("spotlight-text").textContent =
     phrase ||
-    "Choose a session on the right, then press Play to hear an answer.";
+    "Choose a conversation in Sessions, then press Play to hear an answer.";
   const percent = count && index ? Math.round((index / count) * 100) : 0;
   el("progress-label").textContent = `${percent}%`;
   el("progress-fill").style.width = `${percent}%`;
@@ -185,7 +185,7 @@ function renderState(data) {
   const settingsHash =
     JSON.stringify(data.config) +
     JSON.stringify(voiceData.voices.map((v) => [v.id, v.installed]));
-  if (!el("settings-drawer").hidden && settingsHash !== lastSettings)
+  if (!el("settings-page").hidden && settingsHash !== lastSettings)
     renderSettings();
   if (oldSession !== previousSession) refreshSessions();
 }
@@ -345,8 +345,7 @@ function renderSessions() {
       );
       item.addEventListener("click", async () => {
         await action("/api/follow", { key: sessionKey(session) });
-        if (matchMedia("(max-width: 980px)").matches)
-          el("sessions-panel").classList.remove("open");
+        navigate("listen");
       });
       list.append(item);
     }
@@ -378,7 +377,7 @@ function renderSessions() {
 async function refreshVoices() {
   try {
     voiceData = await api("/api/voices");
-    if (snapshot && !el("settings-drawer").hidden) renderSettings();
+    if (snapshot && !el("settings-page").hidden) renderSettings();
   } catch (error) {
     toast(error.message, true);
   }
@@ -643,29 +642,68 @@ function renderSettings() {
     }
   }
 }
-function openDrawer(name) {
-  el("settings-drawer").hidden = name !== "settings";
-  el("phrases-drawer").hidden = name !== "phrases";
-  if (name === "settings") {
+const views = {
+  listen: "LISTENING DESK",
+  sessions: "SESSIONS",
+  phrases: "SAVED PHRASES",
+  settings: "SETTINGS",
+};
+let currentView = "listen";
+function showView(view) {
+  if (!views[view]) view = "listen";
+  currentView = view;
+  for (const name of Object.keys(views)) {
+    el(`${name}-page`).hidden = name !== view;
+  }
+  for (const button of document.querySelectorAll("[data-view]")) {
+    const selected = button.dataset.view === view;
+    button.classList.toggle("selected", selected);
+    if (selected) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  }
+  el("current-view-label").textContent = views[view];
+  document.title = `SpeakHarness — ${views[view]}`;
+  window.scrollTo(0, 0);
+  if (view === "sessions") {
+    void refreshSessions();
+    el("session-search").focus();
+  } else if (view === "phrases") {
+    void refreshPhrases();
+  } else if (view === "settings") {
     renderSettings();
     void refreshVoices();
   }
-  if (name === "phrases") void refreshPhrases();
-  document.body.classList.toggle("drawer-open", !!name);
+}
+function navigate(view) {
+  if (location.hash === `#${view}`) showView(view);
+  else location.hash = view;
 }
 async function refreshPhrases() {
   try {
     const { phrases } = await api("/api/phrases");
     const target = el("phrases-content");
+    el("phrases-count").textContent = String(phrases.length).padStart(2, "0");
     target.replaceChildren();
     if (!phrases.length) {
-      target.append(
+      const empty = create("div", "empty-library");
+      empty.append(
+        create("span", "section-index", "YOUR ARCHIVE STARTS HERE"),
+        create("h2", "", "Keep a sentence worth hearing twice."),
         create(
           "p",
-          "empty-copy",
-          "No saved phrases yet. Press + SAVE SENTENCE while listening.",
+          "",
+          "While listening to an answer, use Save sentence to collect phrases for later practice.",
         ),
       );
+      const button = create(
+        "button",
+        "outline-button",
+        "OPEN LISTENING DESK ↗",
+      );
+      button.type = "button";
+      button.addEventListener("click", () => navigate("listen"));
+      empty.append(button);
+      target.append(empty);
       return;
     }
     for (const phrase of [...phrases].reverse()) {
@@ -689,32 +727,11 @@ async function refreshPhrases() {
 for (const button of document.querySelectorAll("[data-command]"))
   button.addEventListener("click", () => command(button.dataset.command));
 for (const button of document.querySelectorAll("[data-view]"))
-  button.addEventListener("click", () => {
-    for (const item of document.querySelectorAll("[data-view]"))
-      item.classList.toggle("selected", item === button);
-    const view = button.dataset.view;
-    if (view === "settings" || view === "phrases") openDrawer(view);
-    else if (view === "sessions") {
-      openDrawer(null);
-      el("sessions-panel").classList.add("open");
-      el("session-search").focus();
-    } else {
-      openDrawer(null);
-      el("sessions-panel").classList.remove("open");
-      el("main-content").scrollIntoView({ behavior: "smooth" });
-    }
-  });
-el("top-settings").addEventListener("click", () => openDrawer("settings"));
-el("sessions-toggle").addEventListener("click", () => {
-  el("sessions-panel").classList.add("open");
-  el("session-search").focus();
-});
-el("close-settings").addEventListener("click", () => openDrawer(null));
-el("close-phrases").addEventListener("click", () => openDrawer(null));
-for (const backdrop of document.querySelectorAll(".drawer-backdrop"))
-  backdrop.addEventListener("click", (event) => {
-    if (event.target === backdrop) openDrawer(null);
-  });
+  button.addEventListener("click", () => navigate(button.dataset.view));
+el("top-settings").addEventListener("click", () => navigate("settings"));
+el("sessions-toggle").addEventListener("click", () => navigate("sessions"));
+window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
+showView(location.hash.slice(1));
 for (const button of document.querySelectorAll("[data-settings-tab]"))
   button.addEventListener("click", () => {
     settingsTab = button.dataset.settingsTab;
@@ -736,18 +753,26 @@ el("session-search").addEventListener("input", (event) => {
 });
 window.addEventListener("keydown", (event) => {
   if (event.ctrlKey || event.metaKey || event.altKey) return;
-  if (event.key === "Escape") {
-    openDrawer(null);
-    el("sessions-panel").classList.remove("open");
+  if (event.key === "Escape" && currentView !== "listen") {
+    navigate("listen");
     return;
   }
   if (
     event.target instanceof HTMLInputElement ||
-    event.target instanceof HTMLSelectElement ||
-    !el("settings-drawer").hidden ||
-    !el("phrases-drawer").hidden
+    event.target instanceof HTMLSelectElement
   )
     return;
+  if (event.key === ",") {
+    event.preventDefault();
+    navigate("settings");
+    return;
+  }
+  if (event.key === "/") {
+    event.preventDefault();
+    navigate("sessions");
+    return;
+  }
+  if (currentView !== "listen") return;
   const commands = {
     " ": "play-pause",
     ArrowLeft: "prev-sentence",
@@ -759,13 +784,6 @@ window.addEventListener("keydown", (event) => {
   if (commands[event.key]) {
     event.preventDefault();
     void command(commands[event.key]);
-  } else if (event.key === ",") {
-    event.preventDefault();
-    openDrawer("settings");
-  } else if (event.key === "/") {
-    event.preventDefault();
-    el("sessions-panel").classList.add("open");
-    el("session-search").focus();
   }
 });
 window.addEventListener("visibilitychange", () => {

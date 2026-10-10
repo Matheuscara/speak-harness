@@ -25,19 +25,39 @@
         </div>
         <div class="rail-kicker">LOCAL LISTENING SYSTEM <span>001</span></div>
         <nav class="rail-nav">
-          <button class="nav-item selected" type="button" data-view="listen">
+          <button
+            class="nav-item selected"
+            type="button"
+            data-view="listen"
+            aria-label="Listen"
+          >
             <span class="nav-icon">◉</span><span>Listen</span
             ><span class="nav-key">01</span>
           </button>
-          <button class="nav-item" type="button" data-view="sessions">
+          <button
+            class="nav-item"
+            type="button"
+            data-view="sessions"
+            aria-label="Sessions"
+          >
             <span class="nav-icon">▦</span><span>Sessions</span
             ><span class="nav-key">02</span>
           </button>
-          <button class="nav-item" type="button" data-view="phrases">
+          <button
+            class="nav-item"
+            type="button"
+            data-view="phrases"
+            aria-label="Saved phrases"
+          >
             <span class="nav-icon">✦</span><span>Saved phrases</span
             ><span class="nav-key">03</span>
           </button>
-          <button class="nav-item" type="button" data-view="settings">
+          <button
+            class="nav-item"
+            type="button"
+            data-view="settings"
+            aria-label="Settings"
+          >
             <span class="nav-icon">⚙</span><span>Settings</span
             ><span class="nav-key">04</span>
           </button>
@@ -58,7 +78,7 @@
         <header class="topbar">
           <div class="topbar-path">
             <span>WORKSPACE</span><span class="slash">/</span
-            ><strong>LISTENING DESK</strong>
+            ><strong id="current-view-label">LISTENING DESK</strong>
           </div>
           <div class="topbar-right">
             <span id="connection-state" class="connection-state"
@@ -73,281 +93,276 @@
             </button>
           </div>
         </header>
-
-        <section class="hero" aria-labelledby="hero-heading">
-          <div class="hero-orbit hero-orbit-one" aria-hidden="true"></div>
-          <div class="hero-orbit hero-orbit-two" aria-hidden="true"></div>
-          <div class="hero-topline">
-            <span><i class="coral-dot"></i> LOCAL AUDIO / EN + PT-BR</span
-            ><span class="mono">KOKORO × PIPER</span>
-          </div>
-          <div class="hero-copy">
-            <p class="eyebrow">YOUR LISTENING DESK</p>
-            <h1 id="hero-heading">READ WITH<br /><em>YOUR EARS.</em></h1>
-            <p class="hero-deck">
-              Your coding agents’ answers, spoken the way they should be.
-            </p>
-          </div>
-          <div class="hero-bottom">
-            <div class="hero-session">
-              <span class="eyebrow">SELECTED SESSION</span
-              ><strong id="hero-session-title">Finding your sessions…</strong
-              ><small id="hero-session-meta"
-                >OMP · Pi · Codex · Claude Code</small
-              >
+        <div id="listen-page" class="view-page">
+          <section class="hero" aria-labelledby="hero-heading">
+            <div class="hero-orbit hero-orbit-one" aria-hidden="true"></div>
+            <div class="hero-orbit hero-orbit-two" aria-hidden="true"></div>
+            <div class="hero-topline">
+              <span><i class="coral-dot"></i> LOCAL AUDIO / EN + PT-BR</span
+              ><span class="mono">KOKORO × PIPER</span>
             </div>
-            <div class="hero-emblem" aria-hidden="true"><span>✳</span></div>
+            <div class="hero-copy">
+              <p class="eyebrow">YOUR LISTENING DESK</p>
+              <h1 id="hero-heading">READ WITH<br /><em>YOUR EARS.</em></h1>
+              <p class="hero-deck">
+                Your coding agents’ answers, spoken the way they should be.
+              </p>
+            </div>
+            <div class="hero-bottom">
+              <div class="hero-session">
+                <span class="eyebrow">SELECTED SESSION</span
+                ><strong id="hero-session-title">Finding your sessions…</strong
+                ><small id="hero-session-meta"
+                  >OMP · Pi · Codex · Claude Code</small
+                >
+              </div>
+              <div class="hero-emblem" aria-hidden="true"><span>✳</span></div>
+            </div>
+          </section>
+
+          <section class="desk" aria-label="Reader">
+            <div class="desk-heading">
+              <div>
+                <span class="section-index">01 / DESK</span>
+                <h2>IN FOCUS<span class="coral-period">.</span></h2>
+              </div>
+              <button
+                id="sessions-toggle"
+                class="outline-button mobile-sessions"
+                type="button"
+              >
+                CHOOSE SESSION ↗
+              </button>
+            </div>
+            <div class="reader-card">
+              <div class="reader-card-head">
+                <div class="reader-id">
+                  <span class="reader-symbol">◈</span
+                  ><span id="reader-harness">NO SESSION</span
+                  ><span class="reader-separator">/</span
+                  ><span id="reader-message-title">Select a conversation</span>
+                </div>
+                <span id="reader-state" class="state-pill">READY</span>
+              </div>
+              <div class="spotlight">
+                <div class="spotlight-caption">
+                  <span>CURRENT SENTENCE</span
+                  ><span id="spotlight-position">— / —</span>
+                </div>
+                <p id="spotlight-text">
+                  Choose a conversation in Sessions, then press Play to hear an
+                  answer.
+                </p>
+                <div id="wave-bars" class="wave-bars" aria-hidden="true">
+                  <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                  ><i></i><i></i><i></i>
+                </div>
+              </div>
+              <div class="transport">
+                <button
+                  class="icon-button"
+                  type="button"
+                  data-command="prev-sentence"
+                  aria-label="Previous sentence"
+                  title="Previous sentence"
+                >
+                  ←</button
+                ><button
+                  id="play-button"
+                  class="play-button"
+                  type="button"
+                  data-command="play-pause"
+                  aria-label="Read answer"
+                >
+                  ▶ <span>PLAY</span></button
+                ><button
+                  class="icon-button"
+                  type="button"
+                  data-command="next-sentence"
+                  aria-label="Next sentence"
+                  title="Next sentence"
+                >
+                  →
+                </button>
+                <div class="transport-divider"></div>
+                <button
+                  class="text-button"
+                  type="button"
+                  data-command="repeat-sentence"
+                >
+                  ↻ REPEAT</button
+                ><button
+                  class="text-button"
+                  type="button"
+                  data-command="repeat-slower"
+                >
+                  ⅔ REPEAT SLOWER</button
+                ><button class="text-button" type="button" data-command="stop">
+                  ■ STOP
+                </button>
+              </div>
+              <div class="progress-row">
+                <span>READING POSITION</span>
+                <div class="progress-track">
+                  <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                <strong id="progress-label">0%</strong>
+              </div>
+              <div class="reader-footer">
+                <div class="reader-detail">
+                  <span id="reader-language">LANGUAGE —</span
+                  ><span class="bullet">◆</span
+                  ><span id="reader-voice">VOICE —</span>
+                </div>
+                <div class="reader-actions">
+                  <button
+                    id="study-button"
+                    type="button"
+                    data-command="study-mode"
+                  >
+                    ✦ STUDY <span>OFF</span></button
+                  ><button
+                    id="save-phrase"
+                    type="button"
+                    data-command="save-phrase"
+                  >
+                    ＋ SAVE SENTENCE
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="content-grid">
+              <section class="answer-panel">
+                <div class="panel-header">
+                  <div>
+                    <span class="section-index">02 / TRANSCRIPT</span>
+                    <h3>FULL ANSWER</h3>
+                  </div>
+                  <span class="panel-hint">ORIGINAL MARKDOWN ↗</span>
+                </div>
+                <article id="answer-html" class="markdown-body">
+                  <p class="empty-copy">
+                    The full answer appears here when you select a conversation.
+                  </p>
+                </article>
+              </section>
+              <section class="history-panel">
+                <div class="panel-header">
+                  <div>
+                    <span class="section-index">03 / HISTORY</span>
+                    <h3>IN THIS THREAD</h3>
+                  </div>
+                  <span id="message-count" class="count-badge">0</span>
+                </div>
+                <div id="message-list" class="message-list">
+                  <p class="empty-copy">No answers in this session yet.</p>
+                </div>
+              </section>
+            </div>
+          </section>
+        </div>
+
+        <section
+          id="sessions-page"
+          class="view-page sessions-page"
+          aria-labelledby="sessions-title"
+          hidden
+        >
+          <div class="sessions-top">
+            <span class="section-index">EXPLORER / 002</span>
+            <h1 id="sessions-title">YOUR<br /><em>SESSIONS.</em></h1>
+            <p>Switch agents without losing context.</p>
+          </div>
+          <div class="sessions-controls">
+            <label class="search-field"
+              ><span>⌕</span
+              ><input
+                id="session-search"
+                type="search"
+                placeholder="Search conversations, folders…"
+                autocomplete="off"
+                aria-label="Search sessions"
+            /></label>
+            <div class="scope-tabs">
+              <button type="button" data-scope="here" class="selected">
+                THIS FOLDER</button
+              ><button type="button" data-scope="all">ALL</button>
+            </div>
+            <div
+              id="harness-filters"
+              class="harness-filters"
+              aria-label="Filter by harness"
+            ></div>
+            <label class="technical-toggle"
+              ><input id="show-technical" type="checkbox" />
+              <span>Include technical and empty sessions</span></label
+            >
+          </div>
+          <div class="sessions-list-head">
+            <span>CONVERSATIONS</span><span id="sessions-count">—</span>
+          </div>
+          <div id="session-list" class="session-list">
+            <p class="empty-copy">Loading local sessions…</p>
+          </div>
+          <div id="harness-chart" class="harness-chart"></div>
+          <div class="sessions-foot">
+            LOCAL FILES <span>◆</span> NO CONTENT SENT TO CLOUD
           </div>
         </section>
 
-        <section class="desk" aria-label="Reader">
-          <div class="desk-heading">
-            <div>
-              <span class="section-index">01 / DESK</span>
-              <h2>IN FOCUS<span class="coral-period">.</span></h2>
-            </div>
-            <button
-              id="sessions-toggle"
-              class="outline-button mobile-sessions"
-              type="button"
-            >
-              CHOOSE SESSION ↗
-            </button>
-          </div>
-          <div class="reader-card">
-            <div class="reader-card-head">
-              <div class="reader-id">
-                <span class="reader-symbol">◈</span
-                ><span id="reader-harness">NO SESSION</span
-                ><span class="reader-separator">/</span
-                ><span id="reader-message-title">Select a conversation</span>
-              </div>
-              <span id="reader-state" class="state-pill">READY</span>
-            </div>
-            <div class="spotlight">
-              <div class="spotlight-caption">
-                <span>CURRENT SENTENCE</span
-                ><span id="spotlight-position">— / —</span>
-              </div>
-              <p id="spotlight-text">
-                Choose a session on the right. Then press play to hear an
-                answer.
-              </p>
-              <div id="wave-bars" class="wave-bars" aria-hidden="true">
-                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
-                ><i></i><i></i><i></i>
+        <section
+          id="settings-page"
+          class="view-page workspace-page"
+          aria-labelledby="settings-title"
+          hidden
+        >
+          <div class="page-surface">
+            <div class="page-head">
+              <div>
+                <span class="section-index">CONTROL ROOM / 004</span>
+                <h1 id="settings-title">SET YOUR<br /><em>PACE.</em></h1>
               </div>
             </div>
-            <div class="transport">
-              <button
-                class="icon-button"
-                type="button"
-                data-command="prev-sentence"
-                aria-label="Previous sentence"
-                title="Previous sentence"
-              >
-                ←</button
-              ><button
-                id="play-button"
-                class="play-button"
-                type="button"
-                data-command="play-pause"
-                aria-label="Read answer"
-              >
-                ▶ <span>PLAY</span></button
-              ><button
-                class="icon-button"
-                type="button"
-                data-command="next-sentence"
-                aria-label="Next sentence"
-                title="Next sentence"
-              >
-                →
-              </button>
-              <div class="transport-divider"></div>
-              <button
-                class="text-button"
-                type="button"
-                data-command="repeat-sentence"
-              >
-                ↻ REPEAT</button
-              ><button
-                class="text-button"
-                type="button"
-                data-command="repeat-slower"
-              >
-                ⅔ REPEAT SLOWER</button
-              ><button class="text-button" type="button" data-command="stop">
-                ■ STOP
-              </button>
+            <p class="page-description">
+              Tune how SpeakHarness reads, studies and speaks. Changes are saved
+              locally.
+            </p>
+            <div class="page-tabs">
+              <button type="button" data-settings-tab="audio" class="selected">
+                AUDIO</button
+              ><button type="button" data-settings-tab="reading">READING</button
+              ><button type="button" data-settings-tab="study">STUDY</button
+              ><button type="button" data-settings-tab="voices">VOICES</button>
             </div>
-            <div class="progress-row">
-              <span>READING POSITION</span>
-              <div class="progress-track">
-                <div id="progress-fill" class="progress-fill"></div>
-              </div>
-              <strong id="progress-label">0%</strong>
-            </div>
-            <div class="reader-footer">
-              <div class="reader-detail">
-                <span id="reader-language">LANGUAGE —</span
-                ><span class="bullet">◆</span
-                ><span id="reader-voice">VOICE —</span>
-              </div>
-              <div class="reader-actions">
-                <button
-                  id="study-button"
-                  type="button"
-                  data-command="study-mode"
-                >
-                  ✦ STUDY <span>OFF</span></button
-                ><button
-                  id="save-phrase"
-                  type="button"
-                  data-command="save-phrase"
-                >
-                  ＋ SAVE SENTENCE
-                </button>
-              </div>
+            <div id="settings-content" class="settings-content"></div>
+            <div class="page-foot">
+              <span>CHANGES SAVED LOCALLY</span><span class="live-dot"></span>
             </div>
           </div>
-
-          <div class="content-grid">
-            <section class="answer-panel">
-              <div class="panel-header">
-                <div>
-                  <span class="section-index">02 / TRANSCRIPT</span>
-                  <h3>FULL ANSWER</h3>
-                </div>
-                <span class="panel-hint">ORIGINAL MARKDOWN ↗</span>
+        </section>
+        <section
+          id="phrases-page"
+          class="view-page workspace-page"
+          aria-labelledby="phrases-title"
+          hidden
+        >
+          <div class="page-surface">
+            <div class="page-head">
+              <div>
+                <span class="section-index">STUDY ARCHIVE / 003</span>
+                <h1 id="phrases-title">SAVED<br /><em>PHRASES.</em></h1>
               </div>
-              <article id="answer-html" class="markdown-body">
-                <p class="empty-copy">
-                  The full answer appears here when you select a conversation.
-                </p>
-              </article>
-            </section>
-            <section class="history-panel">
-              <div class="panel-header">
-                <div>
-                  <span class="section-index">03 / HISTORY</span>
-                  <h3>IN THIS THREAD</h3>
-                </div>
-                <span id="message-count" class="count-badge">0</span>
-              </div>
-              <div id="message-list" class="message-list">
-                <p class="empty-copy">No answers in this session yet.</p>
-              </div>
-            </section>
+              <span id="phrases-count" class="page-count">—</span>
+            </div>
+            <p class="page-description">
+              Keep useful sentences close. Play them back whenever you want to
+              practice.
+            </p>
+            <div id="phrases-content" class="phrases-content"></div>
           </div>
         </section>
       </main>
-
-      <aside
-        id="sessions-panel"
-        class="sessions-panel"
-        aria-label="Session explorer"
-      >
-        <div class="sessions-top">
-          <span class="section-index">EXPLORER / 004</span>
-          <h2>YOUR<br /><em>SESSIONS.</em></h2>
-          <p>Switch agents without losing context.</p>
-        </div>
-        <div class="sessions-controls">
-          <label class="search-field"
-            ><span>⌕</span
-            ><input
-              id="session-search"
-              type="search"
-              placeholder="Search conversations, folders…"
-              autocomplete="off"
-              aria-label="Search sessions"
-          /></label>
-          <div class="scope-tabs">
-            <button type="button" data-scope="here" class="selected">
-              THIS FOLDER</button
-            ><button type="button" data-scope="all">ALL</button>
-          </div>
-          <div
-            id="harness-filters"
-            class="harness-filters"
-            aria-label="Filter by harness"
-          ></div>
-          <label class="technical-toggle"
-            ><input id="show-technical" type="checkbox" />
-            <span>Include technical and empty sessions</span></label
-          >
-        </div>
-        <div class="sessions-list-head">
-          <span>CONVERSATIONS</span><span id="sessions-count">—</span>
-        </div>
-        <div id="session-list" class="session-list">
-          <p class="empty-copy">Loading local sessions…</p>
-        </div>
-        <div id="harness-chart" class="harness-chart"></div>
-        <div class="sessions-foot">
-          LOCAL FILES <span>◆</span> NO CONTENT SENT TO CLOUD
-        </div>
-      </aside>
-    </div>
-
-    <div id="settings-drawer" class="drawer-backdrop" hidden>
-      <div
-        class="drawer"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settings-title"
-      >
-        <div class="drawer-head">
-          <div>
-            <span class="section-index">CONTROL ROOM / 004</span>
-            <h2 id="settings-title">SET YOUR<br /><em>PACE.</em></h2>
-          </div>
-          <button
-            id="close-settings"
-            class="close-button"
-            type="button"
-            aria-label="Close settings"
-          >
-            ×
-          </button>
-        </div>
-        <div class="drawer-tabs">
-          <button type="button" data-settings-tab="audio" class="selected">
-            AUDIO</button
-          ><button type="button" data-settings-tab="reading">READING</button
-          ><button type="button" data-settings-tab="study">STUDY</button
-          ><button type="button" data-settings-tab="voices">VOICES</button>
-        </div>
-        <div id="settings-content" class="settings-content"></div>
-        <div class="drawer-foot">
-          <span>CHANGES SAVED LOCALLY</span><span class="live-dot"></span>
-        </div>
-      </div>
-    </div>
-    <div id="phrases-drawer" class="drawer-backdrop" hidden>
-      <div
-        class="drawer"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="phrases-title"
-      >
-        <div class="drawer-head">
-          <div>
-            <span class="section-index">STUDY ARCHIVE</span>
-            <h2 id="phrases-title">SAVED<br /><em>PHRASES.</em></h2>
-          </div>
-          <button
-            id="close-phrases"
-            class="close-button"
-            type="button"
-            aria-label="Close saved phrases"
-          >
-            ×
-          </button>
-        </div>
-        <div id="phrases-content" class="settings-content"></div>
-      </div>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>

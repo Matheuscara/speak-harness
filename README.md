@@ -23,7 +23,7 @@
 ---
 
 <p align="center">
-  <img src="assets/dashboard-en.webp" alt="SpeakHarness dashboard in English, displaying a fictional OMP conversation, playback controls and session explorer" width="1100">
+  <img src="assets/dashboard-en.webp" alt="SpeakHarness listening page with a fictional OMP conversation, playback controls and answer history" width="1100">
 </p>
 <p align="center"><sub>Actual local dashboard with a fictional example conversation; no personal transcript data.</sub></p>
 
@@ -44,12 +44,12 @@ The interface, controls and documentation are in English. This does not change t
 ### Nix (recommended on NixOS)
 
 ```sh
-nix profile add github:Matheuscara/speak-harness/v0.1.2
+nix profile add github:Matheuscara/speak-harness/v0.1.3
 speakh setup       # download the default local voices once
 speakh web         # open the graphical dashboard
 ```
 
-On Linux, the package also adds **SpeakHarness** (graphical dashboard) and **SpeakHarness Terminal** (OpenTUI in Alacritty) to the application menu. For a one-off run without installing: `nix run github:Matheuscara/speak-harness/v0.1.2 -- web`. Use the untagged `github:Matheuscara/speak-harness` flake only if you want the latest `main` instead of a pinned release.
+On Linux, the package also adds **SpeakHarness** (graphical dashboard) and **SpeakHarness Terminal** (OpenTUI in Alacritty) to the application menu. For a one-off run without installing: `nix run github:Matheuscara/speak-harness/v0.1.3 -- web`. Use the untagged `github:Matheuscara/speak-harness` flake only if you want the latest `main` instead of a pinned release.
 
 ### From source
 
@@ -67,7 +67,7 @@ On NixOS, use the Nix installation above: it supplies Bun, Node.js and the nativ
 
 ### Already running a harness?
 
-Open the dashboard from the same project directory and pick the conversation under **This folder**. Turn on **Read new answers automatically** under **Settings → Reading** if you want hands-free playback; it is off by default. The session explorer also searches all folders and filters by harness.
+Open the dashboard from the same project directory, go to **Sessions** and pick a conversation under **This folder**. Turn on **Read new answers automatically** under **Settings → Reading** if you want hands-free playback; it is off by default. The full Sessions page also searches all folders and filters by harness.
 
 ## What it does
 
@@ -81,9 +81,9 @@ Open the dashboard from the same project directory and pick the conversation und
 | Study mode | Sentence replay, slower repeat, optional shadowing pause and saved phrases. |
 
 <p align="center">
-  <img src="assets/settings-en.webp" alt="SpeakHarness settings drawer in English, showing local voices and playback speed controls" width="1000">
+  <img src="assets/settings-en.webp" alt="SpeakHarness full-page Reading settings with local playback controls" width="1000">
 </p>
-<p align="center"><sub>The same real dashboard, using example data.</sub></p>
+<p align="center"><sub>The same local dashboard; settings are saved on your machine.</sub></p>
 
 ## Supported harnesses
 
@@ -100,7 +100,7 @@ The capture fallback **cannot attach to an unknown harness that was already runn
 
 ## Controls
 
-**Graphical dashboard:** click Play/Pause, Previous/Next, Repeat, Study or Save phrase. Search sessions by title or folder, select OMP/Pi/Codex/Claude filters, and change speed/voices/auto-read in Settings. Keyboard shortcuts include `Space` (play/pause), `←`/`→` (sentences), `r` (repeat), `a` (auto-read), `s` (stop), `,` (settings) and `/` (session search).
+**Graphical dashboard:** use the left navigation to switch between Listen, Sessions, Saved phrases and Settings. Search sessions by title or folder, select OMP/Pi/Codex/Claude filters, and choose a conversation to return to Listen. Settings have Audio, Reading, Study and Voices tabs. Keyboard shortcuts on Listen include `Space` (play/pause), `←`/`→` (sentences), `r` (repeat), `a` (auto-read) and `s` (stop); `,` opens Settings, `/` opens Sessions and `Esc` returns to Listen from another page.
 
 **Terminal UI:** run `speakh` inside the project directory. The session picker opens first; `Tab` switches between this folder and all folders, `1`–`5` filter harnesses, `/` searches and `a` reveals technical/empty sessions. In the reader, `Space` plays/pauses, `h`/`l` move between sentences, `r` repeats, `t` enables study mode, `p` saves a phrase, `,` opens settings and `?` shows the live keymap. Keys are remappable in the TUI or in the config file.
 
