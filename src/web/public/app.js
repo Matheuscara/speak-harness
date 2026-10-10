@@ -735,6 +735,7 @@ el("session-search").addEventListener("input", (event) => {
   searchTimer = setTimeout(() => void refreshSessions(), 120);
 });
 window.addEventListener("keydown", (event) => {
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
   if (event.key === "Escape") {
     openDrawer(null);
     el("sessions-panel").classList.remove("open");
