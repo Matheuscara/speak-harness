@@ -37,6 +37,8 @@ Coding agents return long answers full of headings, links, tables and code. Send
 - **Study by listening.** Repeat a sentence, slow it down, pause for shadowing and save useful phrases.
 - **Choose your surface.** Use the graphical dashboard in your browser, the OpenTUI reader, a headless follower or a one-shot file reader.
 
+The interface, controls and documentation are in English. This does not change the language of your transcripts: pt-BR text is still spoken in Portuguese.
+
 ## Quick start
 
 ### Nix (recommended on NixOS)

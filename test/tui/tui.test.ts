@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { RGBA, TextRenderable } from "@opentui/core";
-import { createTestRenderer, type TestRendererSetup } from "@opentui/core/testing";
+import {
+  createTestRenderer,
+  type TestRendererSetup,
+} from "@opentui/core/testing";
 import { runTui } from "../../src/tui/index.ts";
 import { theme } from "../../src/tui/theme.ts";
 import { FakeApp, fakeConfig } from "./fake-app.ts";
@@ -48,7 +51,12 @@ async function start(app = new FakeApp()): Promise<Harness> {
     highlightedText() {
       return setup
         .captureSpans()
-        .lines.map((line) => line.spans.filter((span) => span.bg.equals(HIGHLIGHT)).map((span) => span.text).join(""))
+        .lines.map((line) =>
+          line.spans
+            .filter((span) => span.bg.equals(HIGHLIGHT))
+            .map((span) => span.text)
+            .join(""),
+        )
         .filter((text) => text !== "")
         .join(" ")
         .replace(/\s+/g, " ")
@@ -90,7 +98,9 @@ describe("reader", () => {
     expect(t.highlightedText()).toBe("What is this task about?");
 
     await t.press("l");
-    expect(t.highlightedText()).toBe("Developers use the app's database user to access production.");
+    expect(t.highlightedText()).toBe(
+      "Developers use the app's database user to access production.",
+    );
 
     t.app.playback.advanceTo(2);
     await t.settle();
@@ -115,7 +125,11 @@ describe("reader", () => {
 
   test("auto-scrolls the highlighted sentence into view", async () => {
     const app = new FakeApp();
-    await app.sessions.follow(app.sessions.messages.length ? (await app.sessions.list({}))[1]! : (await app.sessions.list({}))[0]!);
+    await app.sessions.follow(
+      app.sessions.messages.length
+        ? (await app.sessions.list({}))[1]!
+        : (await app.sessions.list({}))[0]!,
+    );
     const t = await start(app);
     expect(t.captureCharFrame()).toContain("Paragraph 1 explains");
     await t.press(" ");
@@ -237,7 +251,9 @@ describe("overlays", () => {
 
 test("settings control in the reader footer opens settings by mouse", async () => {
   const t = await start();
-  const button = t.renderer.root.findDescendantById("reader-settings") as TextRenderable | undefined;
+  const button = t.renderer.root.findDescendantById("reader-settings") as
+    | TextRenderable
+    | undefined;
   expect(button).toBeDefined();
   await t.mockMouse.click(button!.x + 2, button!.y);
   expect(await t.settle()).toContain("SETTINGS  /  AUDIO");
@@ -263,7 +279,9 @@ describe("settings", () => {
   test("settings tabs are clickable and keep reading preferences separate from audio", async () => {
     const t = await start();
     await t.press(",");
-    const tabs = t.renderer.root.findDescendantById("settings-tabs") as TextRenderable | undefined;
+    const tabs = t.renderer.root.findDescendantById("settings-tabs") as
+      | TextRenderable
+      | undefined;
     expect(tabs).toBeDefined();
     await t.mockMouse.click(tabs!.x + 14, tabs!.y);
     const frame = await t.settle();
@@ -275,15 +293,21 @@ describe("settings", () => {
     const t = await start();
     await t.press(",", "j", "j", "j", "j", "\r");
     let frame = await t.settle();
-    expect(frame).toContain("Voice · Português (BR)");
+    expect(frame).toContain("Voice · Brazilian Portuguese");
     expect(frame).toContain("○ Cadu (pt-BR)");
     expect(frame).toContain("not installed · 63 MB · CC0");
     expect(frame).not.toContain("Heart (US English)");
     await t.press("j", "j", "\r");
-    expect(t.app.config.voices.languages["pt-BR"]).toBe("piper:pt_BR-cadu-medium");
+    expect(t.app.config.voices.languages["pt-BR"]).toBe(
+      "piper:pt_BR-cadu-medium",
+    );
     expect(await t.settle()).toContain("press i to install");
     await t.press("i");
-    expect(await t.waitForFrame((f) => f.includes("Installing piper:pt_BR-cadu-medium… 50% of 63 MB"))).toContain("50%");
+    expect(
+      await t.waitForFrame((f) =>
+        f.includes("Installing piper:pt_BR-cadu-medium… 50% of 63 MB"),
+      ),
+    ).toContain("50%");
     t.app.engine.finishInstall();
     frame = await t.waitForFrame((f) => f.includes("● Cadu (pt-BR)"));
     expect(t.app.engine.installs).toEqual(["piper:pt_BR-cadu-medium"]);
@@ -328,7 +352,9 @@ describe("keymap and lifecycle", () => {
     const config = fakeConfig();
     config.keys.stop = ["l"];
     const t = await start(new FakeApp({ config }));
-    expect(t.captureCharFrame()).toContain("Key conflicts: l → stop & next-sentence");
+    expect(t.captureCharFrame()).toContain(
+      "Key conflicts: l → stop & next-sentence",
+    );
   });
 
   test("leader sequences dispatch commands", async () => {
@@ -342,7 +368,15 @@ describe("keymap and lifecycle", () => {
 
   test("UI commands are registered in the app registry and removed on quit", async () => {
     const t = await start();
-    for (const id of ["switch-session", "messages", "phrases", "command-palette", "settings", "help", "quit"]) {
+    for (const id of [
+      "switch-session",
+      "messages",
+      "phrases",
+      "command-palette",
+      "settings",
+      "help",
+      "quit",
+    ]) {
       expect(t.app.commands.get(id)?.group).toBe("app");
     }
     await t.press("q");

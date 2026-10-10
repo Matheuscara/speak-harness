@@ -84,7 +84,7 @@ function shortVoice(id) {
 function shortDate(value) {
   if (!value) return "—";
   const date = new Date(value);
-  return new Intl.DateTimeFormat("pt-BR", {
+  return new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -101,23 +101,22 @@ function renderState(data) {
   const p = data.playback;
   const message = data.messages.find((m) => m.key === data.selectedKey);
   const sessionTitle =
-    s?.title || (s ? `Sessão ${s.id.slice(0, 8)}` : "Escolha uma conversa");
+    s?.title || (s ? `Session ${s.id.slice(0, 8)}` : "Choose a conversation");
   previousSession = s ? sessionKey(s) : "";
   el("hero-session-title").textContent = sessionTitle;
   el("hero-session-meta").textContent = s
-    ? `${s.harness.toUpperCase()}  ·  ${s.cwd || "sessão local"}`
+    ? `${s.harness.toUpperCase()}  ·  ${s.cwd || "local session"}`
     : "OMP · Pi · Codex · Claude Code";
-  el("reader-harness").textContent = s?.harness.toUpperCase() || "SEM SESSÃO";
-  el("reader-message-title").textContent =
-    message?.title || "Selecione uma resposta";
+  el("reader-harness").textContent = s?.harness.toUpperCase() || "NO SESSION";
+  el("reader-message-title").textContent = message?.title || "Select an answer";
   const sameAnswer = p.messageKey && p.messageKey === data.selectedKey;
   const displayedStatus = sameAnswer ? p.status : "idle";
   const statusName = {
-    idle: "PRONTO",
-    preparing: "PREPARANDO",
-    speaking: "REPRODUZINDO",
-    paused: "PAUSADO",
-    "study-wait": "MODO ESTUDO",
+    idle: "READY",
+    preparing: "PREPARING",
+    speaking: "PLAYING",
+    paused: "PAUSED",
+    "study-wait": "STUDY PAUSE",
   };
   el("reader-state").textContent =
     statusName[displayedStatus] || displayedStatus;
@@ -139,26 +138,26 @@ function renderState(data) {
     data.activeText || data.script?.segments[index ? index - 1 : 0]?.text;
   el("spotlight-text").textContent =
     phrase ||
-    "Escolha uma sessão à direita. Depois, aperte play para ouvir uma resposta.";
+    "Choose a session on the right, then press Play to hear an answer.";
   const percent = count && index ? Math.round((index / count) * 100) : 0;
   el("progress-label").textContent = `${percent}%`;
   el("progress-fill").style.width = `${percent}%`;
   const language = sameAnswer ? p.lang : data.script?.dominantLang;
   el("reader-language").textContent =
-    `IDIOMA ${language?.toUpperCase() || "—"}`;
+    `LANGUAGE ${language?.toUpperCase() || "—"}`;
   const voice =
     (sameAnswer && p.voice) || data.config.voices.languages[language || "en"];
-  el("reader-voice").textContent = `VOZ ${shortVoice(voice)}`;
+  el("reader-voice").textContent = `VOICE ${shortVoice(voice)}`;
   const playing =
     displayedStatus === "speaking" || displayedStatus === "preparing";
   el("play-button").innerHTML = playing
-    ? "Ⅱ <span>PAUSAR</span>"
+    ? "Ⅱ <span>PAUSE</span>"
     : displayedStatus === "paused"
-      ? "▶ <span>CONTINUAR</span>"
-      : "▶ <span>OUVIR</span>";
+      ? "▶ <span>RESUME</span>"
+      : "▶ <span>PLAY</span>";
   el("play-button").setAttribute(
     "aria-label",
-    playing ? "Pausar leitura" : "Ler resposta",
+    playing ? "Pause playback" : "Play answer",
   );
   el("study-button").classList.toggle("active", p.studyMode);
   el("study-button").querySelector("span").textContent = p.studyMode
@@ -173,7 +172,7 @@ function renderState(data) {
     const scroll = article.scrollTop;
     article.innerHTML =
       data.html ||
-      '<p class="empty-copy">Sua resposta aparece aqui ao selecionar uma conversa.</p>';
+      '<p class="empty-copy">The full answer appears here when you select a conversation.</p>';
     if (lastMarkdown === data.markdown && article.querySelector("mark"))
       article
         .querySelector("mark")
@@ -201,7 +200,7 @@ function renderMessages(messages, selected) {
   const list = el("message-list");
   list.replaceChildren();
   if (!messages.length) {
-    list.append(create("p", "empty-copy", "Nenhuma resposta nesta sessão."));
+    list.append(create("p", "empty-copy", "No answers in this session yet."));
     return;
   }
   for (const [index, message] of [...messages].reverse().entries()) {
@@ -224,7 +223,7 @@ function renderMessages(messages, selected) {
       create(
         "small",
         "",
-        `${shortDate(message.createdAt)}  /  ${message.commentary ? "NARRAÇÃO" : "RESPOSTA"}`,
+        `${shortDate(message.createdAt)}  /  ${message.commentary ? "NARRATION" : "ANSWER"}`,
       ),
     );
     button.addEventListener("click", () =>
@@ -282,13 +281,13 @@ async function refreshSessions() {
 
 function renderSessions() {
   el("sessions-count").textContent =
-    `${sessionData.sessions.length} / ${sessionData.total}${sessionData.hidden ? ` · ${sessionData.hidden} OCULTAS` : ""}`;
+    `${sessionData.sessions.length} / ${sessionData.total}${sessionData.hidden ? ` · ${sessionData.hidden} HIDDEN` : ""}`;
   for (const button of document.querySelectorAll("[data-scope]"))
     button.classList.toggle("selected", button.dataset.scope === scope);
   const filters = el("harness-filters");
   filters.replaceChildren();
   for (const [id, label] of [
-    ["all", "TODOS"],
+    ["all", "ALL"],
     ["omp", "OMP"],
     ["pi", "PI"],
     ["codex", "CODEX"],
@@ -312,8 +311,8 @@ function renderSessions() {
         "p",
         "empty-copy",
         sessionData.hereCount === 0 && scope === "here"
-          ? "Nenhuma conversa nesta pasta. Escolha TODAS acima."
-          : "Nenhuma conversa com esses filtros. Mude o harness ou a busca.",
+          ? "No conversations in this folder. Choose ALL above."
+          : "No conversations match these filters. Change the harness or search.",
       ),
     );
   } else {
@@ -331,12 +330,12 @@ function renderSessions() {
         create(
           "span",
           "session-harness",
-          `${session.harness.toUpperCase()}  /  ${selected ? "EM FOCO" : "SESSÃO"}`,
+          `${session.harness.toUpperCase()}  /  ${selected ? "IN FOCUS" : "SESSION"}`,
         ),
         create(
           "strong",
           "",
-          session.title || `Sem título · ${session.id.slice(0, 8)}`,
+          session.title || `Untitled · ${session.id.slice(0, 8)}`,
         ),
         create(
           "small",
@@ -458,10 +457,10 @@ function voiceChoice(parent, path, title, language, value) {
     parent,
     path,
     title,
-    "Voz local para este papel. Instale modelos na aba Vozes.",
+    "Local voice for this role. Install models in the Voices tab.",
     voiceData.voices
       .filter((v) => !language || v.lang === language)
-      .map((v) => [v.id, `${v.label}${v.installed ? "" : " · não instalada"}`]),
+      .map((v) => [v.id, `${v.label}${v.installed ? "" : " · not installed"}`]),
     value,
   );
 }
@@ -482,8 +481,8 @@ function renderSettings() {
     slider(
       panel,
       "voices.speed",
-      "Velocidade da leitura",
-      "Persistida para as próximas sessões; ajuste de 0,1×.",
+      "Reading speed",
+      "Saved for future sessions; adjust in 0.1× steps.",
       0.5,
       2,
       0.1,
@@ -492,35 +491,35 @@ function renderSettings() {
     toggle(
       panel,
       "voices.autoLanguage",
-      "Trocar voz por idioma",
-      "Detecta inglês e português por parágrafo.",
+      "Switch voice by language",
+      "Detects English and Portuguese per paragraph.",
       c.voices.autoLanguage,
     );
     voiceChoice(
       panel,
       "voices.languages.en",
-      "Inglês",
+      "English",
       "en",
       c.voices.languages.en,
     );
     voiceChoice(
       panel,
       "voices.languages.pt-BR",
-      "Português brasileiro",
+      "Brazilian Portuguese",
       "pt-BR",
       c.voices.languages["pt-BR"],
     );
     voiceChoice(
       panel,
       "voices.primary",
-      "Voz principal",
+      "Primary voice",
       null,
       c.voices.primary,
     );
     voiceChoice(
       panel,
       "voices.alternate",
-      "Voz alternativa",
+      "Alternate voice",
       null,
       c.voices.alternate,
     );
@@ -528,59 +527,59 @@ function renderSettings() {
     toggle(
       panel,
       "reading.autoRead",
-      "Ler novas respostas automaticamente",
-      "Ouve o harness enquanto você continua trabalhando.",
+      "Read new answers automatically",
+      "Listen while you keep working in your harness.",
       c.reading.autoRead,
     );
     choice(
       panel,
       "reading.autoReadQueue",
-      "Fila de respostas",
-      "Quando a próxima resposta chega durante a fala.",
+      "Answer queue",
+      "When another answer arrives during playback.",
       [
-        ["latest", "Só a mais recente"],
-        ["all", "Todas, em ordem"],
+        ["latest", "Newest only"],
+        ["all", "All, in order"],
       ],
       c.reading.autoReadQueue,
     );
     choice(
       panel,
       "reading.tables",
-      "Tabelas",
-      "O que falar quando aparecer uma tabela.",
+      "Tables",
+      "How tables should be spoken.",
       [
-        ["summary", "Resumir colunas"],
-        ["rows", "Ler todas as linhas"],
+        ["summary", "Summarize columns"],
+        ["rows", "Read every row"],
       ],
       c.reading.tables,
     );
     toggle(
       panel,
       "reading.quoteCue",
-      "Anunciar citações",
-      "Diz quando um trecho é uma citação.",
+      "Announce quotes",
+      "Introduce quoted passages.",
       c.reading.quoteCue,
     );
   } else if (settingsTab === "study") {
     toggle(
       panel,
       "study.pauseAfterSentence",
-      "Pausar a cada frase",
-      "Continue no seu ritmo para praticar pronúncia.",
+      "Pause after each sentence",
+      "Continue at your own pace to practice pronunciation.",
       c.study.pauseAfterSentence,
     );
     toggle(
       panel,
       "study.shadowing",
-      "Silêncio para repetição",
-      "Reserve tempo para repetir a frase em voz alta.",
+      "Shadowing silence",
+      "Leave time to repeat each sentence aloud.",
       c.study.shadowing,
     );
     slider(
       panel,
       "study.shadowingFactor",
-      "Duração do silêncio",
-      "Proporcional ao tempo da frase falada.",
+      "Silence duration",
+      "Proportional to the spoken sentence length.",
       0.5,
       3,
       0.25,
@@ -589,8 +588,8 @@ function renderSettings() {
     slider(
       panel,
       "study.slowerSpeed",
-      "Velocidade de repetir devagar",
-      "Usada ao clicar em MAIS LENTO.",
+      "Slower repeat speed",
+      "Used by the Repeat slower control.",
       0.3,
       1,
       0.05,
@@ -600,7 +599,7 @@ function renderSettings() {
     const head = create(
       "p",
       "setting-desc",
-      "Modelos são baixados e sintetizados na sua máquina. Nenhuma resposta é enviada a um serviço externo.",
+      "Models are downloaded and synthesized on your machine. No answer is sent to a hosted service.",
     );
     panel.append(head);
     for (const voice of voiceData.voices) {
@@ -615,13 +614,13 @@ function renderSettings() {
       );
       const progress = voiceData.installations[voice.id];
       if (progress?.error)
-        row.append(create("small", "", `Falha: ${progress.error}`));
+        row.append(create("small", "", `Failed: ${progress.error}`));
       if (progress && !progress.error) {
         row.append(
           create(
             "small",
             "",
-            `Instalando… ${progress.total ? Math.floor((progress.done / progress.total) * 100) : 0}%`,
+            `Installing… ${progress.total ? Math.floor((progress.done / progress.total) * 100) : 0}%`,
           ),
         );
         const track = create("span", "install-progress");
@@ -630,9 +629,9 @@ function renderSettings() {
         track.append(fill);
         row.append(track);
       } else if (voice.installed)
-        row.append(create("small", "", "● INSTALADA"));
+        row.append(create("small", "", "● INSTALLED"));
       else {
-        const button = create("button", "", "INSTALAR LOCALMENTE ↓");
+        const button = create("button", "", "INSTALL LOCALLY ↓");
         button.type = "button";
         button.addEventListener("click", async () => {
           await action("/api/install", { voice: voice.id });
@@ -664,7 +663,7 @@ async function refreshPhrases() {
         create(
           "p",
           "empty-copy",
-          "Nenhuma frase salva. Aperte ＋ SALVAR FRASE enquanto ouve.",
+          "No saved phrases yet. Press + SAVE SENTENCE while listening.",
         ),
       );
       return;
@@ -675,7 +674,7 @@ async function refreshPhrases() {
         create("strong", "", phrase.text),
         create("small", "", `${phrase.lang}  /  ${shortDate(phrase.savedAt)}`),
       );
-      const button = create("button", "", "▶ OUVIR FRASE");
+      const button = create("button", "", "▶ PLAY PHRASE");
       button.addEventListener("click", () =>
         action("/api/phrase", { text: phrase.text, lang: phrase.lang }),
       );
@@ -786,11 +785,11 @@ stream.addEventListener("notice", (event) => {
 });
 stream.onopen = () => {
   el("connection-state").classList.add("online");
-  el("connection-state").innerHTML = "<i></i> CONECTADO";
+  el("connection-state").innerHTML = "<i></i> CONNECTED";
 };
 stream.onerror = () => {
   el("connection-state").classList.remove("online");
-  el("connection-state").innerHTML = "<i></i> RECONECTANDO";
+  el("connection-state").innerHTML = "<i></i> RECONNECTING";
 };
 void Promise.all([refreshState(), refreshSessions(), refreshVoices()]);
 setInterval(() => {

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -12,27 +12,33 @@
   </head>
   <body>
     <div class="app-shell">
-      <aside class="rail" aria-label="Navegação">
+      <aside class="rail" aria-label="Navigation">
         <div class="brand">
-          <img class="brand-mark" src="/favicon.svg" width="30" height="30" alt="" />
+          <img
+            class="brand-mark"
+            src="/favicon.svg"
+            width="30"
+            height="30"
+            alt=""
+          />
           <span>SPEAK<span class="brand-red">HARNESS</span></span>
         </div>
         <div class="rail-kicker">LOCAL LISTENING SYSTEM <span>001</span></div>
         <nav class="rail-nav">
           <button class="nav-item selected" type="button" data-view="listen">
-            <span class="nav-icon">◉</span><span>Ouvir</span
+            <span class="nav-icon">◉</span><span>Listen</span
             ><span class="nav-key">01</span>
           </button>
           <button class="nav-item" type="button" data-view="sessions">
-            <span class="nav-icon">▦</span><span>Sessões</span
+            <span class="nav-icon">▦</span><span>Sessions</span
             ><span class="nav-key">02</span>
           </button>
           <button class="nav-item" type="button" data-view="phrases">
-            <span class="nav-icon">✦</span><span>Frases salvas</span
+            <span class="nav-icon">✦</span><span>Saved phrases</span
             ><span class="nav-key">03</span>
           </button>
           <button class="nav-item" type="button" data-view="settings">
-            <span class="nav-icon">⚙</span><span>Configurações</span
+            <span class="nav-icon">⚙</span><span>Settings</span
             ><span class="nav-key">04</span>
           </button>
         </nav>
@@ -40,13 +46,9 @@
           <div class="mini-spectrum" aria-hidden="true">
             <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
           </div>
-          <p>
-            Uma resposta de cada vez.<br /><strong
-              >Sem nuvem. Sem ruído.</strong
-            >
-          </p>
+          <p>One answer at a time.<br /><strong>No cloud. No noise.</strong></p>
           <div class="local-badge">
-            <span class="live-dot"></span> SISTEMA LOCAL
+            <span class="live-dot"></span> LOCAL SYSTEM
             <span class="mono">/ 127.0.0.1</span>
           </div>
         </div>
@@ -60,12 +62,12 @@
           </div>
           <div class="topbar-right">
             <span id="connection-state" class="connection-state"
-              ><i></i> CONECTANDO</span
+              ><i></i> CONNECTING</span
             ><button
               id="top-settings"
               class="top-settings"
               type="button"
-              aria-label="Abrir configurações"
+              aria-label="Open settings"
             >
               ⚙
             </button>
@@ -76,20 +78,20 @@
           <div class="hero-orbit hero-orbit-one" aria-hidden="true"></div>
           <div class="hero-orbit hero-orbit-two" aria-hidden="true"></div>
           <div class="hero-topline">
-            <span><i class="coral-dot"></i> ÁUDIO LOCAL / EN + PT-BR</span
+            <span><i class="coral-dot"></i> LOCAL AUDIO / EN + PT-BR</span
             ><span class="mono">KOKORO × PIPER</span>
           </div>
           <div class="hero-copy">
-            <p class="eyebrow">A SUA CENTRAL DE ESCUTA</p>
-            <h1 id="hero-heading">LEIA COM<br /><em>OS OUVIDOS.</em></h1>
+            <p class="eyebrow">YOUR LISTENING DESK</p>
+            <h1 id="hero-heading">READ WITH<br /><em>YOUR EARS.</em></h1>
             <p class="hero-deck">
-              As respostas dos seus agentes, do jeito que deveriam soar.
+              Your coding agents’ answers, spoken the way they should be.
             </p>
           </div>
           <div class="hero-bottom">
             <div class="hero-session">
-              <span class="eyebrow">SESSÃO SELECIONADA</span
-              ><strong id="hero-session-title">Buscando suas sessões…</strong
+              <span class="eyebrow">SELECTED SESSION</span
+              ><strong id="hero-session-title">Finding your sessions…</strong
               ><small id="hero-session-meta"
                 >OMP · Pi · Codex · Claude Code</small
               >
@@ -98,38 +100,38 @@
           </div>
         </section>
 
-        <section class="desk" aria-label="Leitor">
+        <section class="desk" aria-label="Reader">
           <div class="desk-heading">
             <div>
               <span class="section-index">01 / DESK</span>
-              <h2>EM FOCO<span class="coral-period">.</span></h2>
+              <h2>IN FOCUS<span class="coral-period">.</span></h2>
             </div>
             <button
               id="sessions-toggle"
               class="outline-button mobile-sessions"
               type="button"
             >
-              ESCOLHER SESSÃO ↗
+              CHOOSE SESSION ↗
             </button>
           </div>
           <div class="reader-card">
             <div class="reader-card-head">
               <div class="reader-id">
                 <span class="reader-symbol">◈</span
-                ><span id="reader-harness">SEM SESSÃO</span
+                ><span id="reader-harness">NO SESSION</span
                 ><span class="reader-separator">/</span
-                ><span id="reader-message-title">Selecione uma conversa</span>
+                ><span id="reader-message-title">Select a conversation</span>
               </div>
-              <span id="reader-state" class="state-pill">PRONTO</span>
+              <span id="reader-state" class="state-pill">READY</span>
             </div>
             <div class="spotlight">
               <div class="spotlight-caption">
-                <span>FRASE ATUAL</span
+                <span>CURRENT SENTENCE</span
                 ><span id="spotlight-position">— / —</span>
               </div>
               <p id="spotlight-text">
-                Escolha uma sessão à direita. Depois, aperte play para ouvir uma
-                resposta.
+                Choose a session on the right. Then press play to hear an
+                answer.
               </p>
               <div id="wave-bars" class="wave-bars" aria-hidden="true">
                 <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
@@ -141,8 +143,8 @@
                 class="icon-button"
                 type="button"
                 data-command="prev-sentence"
-                aria-label="Frase anterior"
-                title="Frase anterior"
+                aria-label="Previous sentence"
+                title="Previous sentence"
               >
                 ←</button
               ><button
@@ -150,15 +152,15 @@
                 class="play-button"
                 type="button"
                 data-command="play-pause"
-                aria-label="Ler resposta"
+                aria-label="Read answer"
               >
-                ▶ <span>OUVIR</span></button
+                ▶ <span>PLAY</span></button
               ><button
                 class="icon-button"
                 type="button"
                 data-command="next-sentence"
-                aria-label="Próxima frase"
-                title="Próxima frase"
+                aria-label="Next sentence"
+                title="Next sentence"
               >
                 →
               </button>
@@ -168,19 +170,19 @@
                 type="button"
                 data-command="repeat-sentence"
               >
-                ↻ REPETIR</button
+                ↻ REPEAT</button
               ><button
                 class="text-button"
                 type="button"
                 data-command="repeat-slower"
               >
-                ⅔ MAIS LENTO</button
+                ⅔ REPEAT SLOWER</button
               ><button class="text-button" type="button" data-command="stop">
-                ■ PARAR
+                ■ STOP
               </button>
             </div>
             <div class="progress-row">
-              <span>PROGRESSO DA LEITURA</span>
+              <span>READING POSITION</span>
               <div class="progress-track">
                 <div id="progress-fill" class="progress-fill"></div>
               </div>
@@ -188,9 +190,9 @@
             </div>
             <div class="reader-footer">
               <div class="reader-detail">
-                <span id="reader-language">IDIOMA —</span
+                <span id="reader-language">LANGUAGE —</span
                 ><span class="bullet">◆</span
-                ><span id="reader-voice">VOZ —</span>
+                ><span id="reader-voice">VOICE —</span>
               </div>
               <div class="reader-actions">
                 <button
@@ -198,13 +200,13 @@
                   type="button"
                   data-command="study-mode"
                 >
-                  ✦ ESTUDO <span>OFF</span></button
+                  ✦ STUDY <span>OFF</span></button
                 ><button
                   id="save-phrase"
                   type="button"
                   data-command="save-phrase"
                 >
-                  ＋ SALVAR FRASE
+                  ＋ SAVE SENTENCE
                 </button>
               </div>
             </div>
@@ -215,13 +217,13 @@
               <div class="panel-header">
                 <div>
                   <span class="section-index">02 / TRANSCRIPT</span>
-                  <h3>RESPOSTA COMPLETA</h3>
+                  <h3>FULL ANSWER</h3>
                 </div>
-                <span class="panel-hint">MARKDOWN PRESERVADO ↗</span>
+                <span class="panel-hint">ORIGINAL MARKDOWN ↗</span>
               </div>
               <article id="answer-html" class="markdown-body">
                 <p class="empty-copy">
-                  Sua resposta aparece aqui ao selecionar uma conversa.
+                  The full answer appears here when you select a conversation.
                 </p>
               </article>
             </section>
@@ -229,12 +231,12 @@
               <div class="panel-header">
                 <div>
                   <span class="section-index">03 / HISTORY</span>
-                  <h3>NA CONVERSA</h3>
+                  <h3>IN THIS THREAD</h3>
                 </div>
                 <span id="message-count" class="count-badge">0</span>
               </div>
               <div id="message-list" class="message-list">
-                <p class="empty-copy">Nenhuma resposta nesta sessão.</p>
+                <p class="empty-copy">No answers in this session yet.</p>
               </div>
             </section>
           </div>
@@ -244,12 +246,12 @@
       <aside
         id="sessions-panel"
         class="sessions-panel"
-        aria-label="Explorador de sessões"
+        aria-label="Session explorer"
       >
         <div class="sessions-top">
           <span class="section-index">EXPLORER / 004</span>
-          <h2>SUAS<br /><em>SESSÕES.</em></h2>
-          <p>Troque de agente sem perder o fio.</p>
+          <h2>YOUR<br /><em>SESSIONS.</em></h2>
+          <p>Switch agents without losing context.</p>
         </div>
         <div class="sessions-controls">
           <label class="search-field"
@@ -257,34 +259,34 @@
             ><input
               id="session-search"
               type="search"
-              placeholder="Buscar conversa, pasta…"
+              placeholder="Search conversations, folders…"
               autocomplete="off"
-              aria-label="Buscar sessões"
+              aria-label="Search sessions"
           /></label>
           <div class="scope-tabs">
             <button type="button" data-scope="here" class="selected">
-              ESTA PASTA</button
-            ><button type="button" data-scope="all">TODAS</button>
+              THIS FOLDER</button
+            ><button type="button" data-scope="all">ALL</button>
           </div>
           <div
             id="harness-filters"
             class="harness-filters"
-            aria-label="Filtrar harness"
+            aria-label="Filter by harness"
           ></div>
           <label class="technical-toggle"
             ><input id="show-technical" type="checkbox" />
-            <span>Incluir sessões técnicas e vazias</span></label
+            <span>Include technical and empty sessions</span></label
           >
         </div>
         <div class="sessions-list-head">
-          <span>CONVERSAS</span><span id="sessions-count">—</span>
+          <span>CONVERSATIONS</span><span id="sessions-count">—</span>
         </div>
         <div id="session-list" class="session-list">
-          <p class="empty-copy">Carregando sessões locais…</p>
+          <p class="empty-copy">Loading local sessions…</p>
         </div>
         <div id="harness-chart" class="harness-chart"></div>
         <div class="sessions-foot">
-          ARQUIVOS LOCAIS <span>◆</span> NADA ENVIADO PARA A NUVEM
+          LOCAL FILES <span>◆</span> NO CONTENT SENT TO CLOUD
         </div>
       </aside>
     </div>
@@ -299,28 +301,27 @@
         <div class="drawer-head">
           <div>
             <span class="section-index">CONTROL ROOM / 004</span>
-            <h2 id="settings-title">AJUSTE O<br /><em>SEU RITMO.</em></h2>
+            <h2 id="settings-title">SET YOUR<br /><em>PACE.</em></h2>
           </div>
           <button
             id="close-settings"
             class="close-button"
             type="button"
-            aria-label="Fechar configurações"
+            aria-label="Close settings"
           >
             ×
           </button>
         </div>
         <div class="drawer-tabs">
           <button type="button" data-settings-tab="audio" class="selected">
-            ÁUDIO</button
-          ><button type="button" data-settings-tab="reading">LEITURA</button
-          ><button type="button" data-settings-tab="study">ESTUDO</button
-          ><button type="button" data-settings-tab="voices">VOZES</button>
+            AUDIO</button
+          ><button type="button" data-settings-tab="reading">READING</button
+          ><button type="button" data-settings-tab="study">STUDY</button
+          ><button type="button" data-settings-tab="voices">VOICES</button>
         </div>
         <div id="settings-content" class="settings-content"></div>
         <div class="drawer-foot">
-          <span>ALTERAÇÕES SALVAS LOCALMENTE</span
-          ><span class="live-dot"></span>
+          <span>CHANGES SAVED LOCALLY</span><span class="live-dot"></span>
         </div>
       </div>
     </div>
@@ -334,13 +335,13 @@
         <div class="drawer-head">
           <div>
             <span class="section-index">STUDY ARCHIVE</span>
-            <h2 id="phrases-title">FRASES<br /><em>SALVAS.</em></h2>
+            <h2 id="phrases-title">SAVED<br /><em>PHRASES.</em></h2>
           </div>
           <button
             id="close-phrases"
             class="close-button"
             type="button"
-            aria-label="Fechar frases"
+            aria-label="Close saved phrases"
           >
             ×
           </button>
