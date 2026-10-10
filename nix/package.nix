@@ -140,6 +140,20 @@ stdenv.mkDerivation {
           nodejs-slim_22
         ]
       } ${lib.optionalString isLinux "--prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ stdenv.cc.cc.lib ]}"}
+    ${lib.optionalString isLinux ''
+      # Desktop entry opens the existing OpenTUI interface in the user's default terminal.
+      mkdir -p $out/share/applications
+      printf '%s\n' \
+        '[Desktop Entry]' \
+        'Type=Application' \
+        'Name=SpeakHarness' \
+        'Comment=Listen to AI coding-harness answers' \
+        "Exec=$out/bin/speakh" \
+        'Terminal=true' \
+        'Icon=audio-speakers' \
+        'Categories=Utility;Audio;' \
+        > $out/share/applications/speak-harness.desktop
+    ''}
 
     runHook postInstall
   '';

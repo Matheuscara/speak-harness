@@ -5,10 +5,11 @@ Read AI coding-harness answers aloud from your terminal — locally. Follows OMP
 ## Install
 
 ```sh
-nix run github:Matheuscara/speak-harness          # Nix
-# or, from a checkout (Bun ≥ 1.3.14 and Node ≥ 22.18 on PATH):
-bun install && bun src/cli/main.ts setup
+nix profile add github:Matheuscara/speak-harness
+speakh
 ```
+
+On Linux, the Nix package also installs a **SpeakHarness** application-menu entry that opens the terminal interface. The development-only command `bun src/cli/main.ts` is not needed to use the app. For a one-off run without installing: `nix run github:Matheuscara/speak-harness`.
 
 `speakh setup` downloads the default voices (Kokoro q4 ~305 MB, Piper faber ~63 MB) into `~/.cache/speak-harness`. Audio plays through `pw-play`, `paplay`, `aplay`, `afplay` or `ffplay`.
 
