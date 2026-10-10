@@ -1,6 +1,6 @@
 {
   "name": "speak-harness",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Local voice companion for OMP, Pi, Codex and Claude Code — graphical dashboard and OpenTUI reader.",
   "type": "module",
   "license": "MIT AND GPL-3.0-or-later",

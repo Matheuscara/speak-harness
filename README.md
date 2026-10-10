@@ -44,12 +44,12 @@ The interface, controls and documentation are in English. This does not change t
 ### Nix (recommended on NixOS)
 
 ```sh
-nix profile add github:Matheuscara/speak-harness/v0.1.4
+nix profile add github:Matheuscara/speak-harness/v0.1.5
 speakh setup       # download the default local voices once
 speakh web         # open the graphical dashboard
 ```
 
-On Linux, the package also adds **SpeakHarness** (graphical dashboard) and **SpeakHarness Terminal** (OpenTUI in Alacritty) to the application menu. For a one-off run without installing: `nix run github:Matheuscara/speak-harness/v0.1.4 -- web`. Use the untagged `github:Matheuscara/speak-harness` flake only if you want the latest `main` instead of a pinned release.
+On Linux, the package also adds **SpeakHarness** (graphical dashboard) and **SpeakHarness Terminal** (OpenTUI in Alacritty) to the application menu. For a one-off run without installing: `nix run github:Matheuscara/speak-harness/v0.1.5 -- web`. Use the untagged `github:Matheuscara/speak-harness` flake only if you want the latest `main` instead of a pinned release.
 
 ### From source
 
@@ -68,6 +68,17 @@ On NixOS, use the Nix installation above: it supplies Bun, Node.js and the nativ
 ### Already running a harness?
 
 Open the dashboard, go to **Sessions** and choose a conversation. **All** folders are shown by default; use **This folder** to narrow the list to the current project. Turn on **Read new answers automatically** under **Settings → Reading** if you want hands-free playback; it is off by default.
+
+### Hear Oh My Pi replies without opening the dashboard
+
+Install the OMP integration once and restart the OMP client so it loads the extension:
+
+```sh
+speakh integrate omp
+speakh daemon
+```
+
+`speakh daemon` is the audio owner when no SpeakHarness interface is open. If `speakh web` or the TUI is already running, keep that one instance instead of starting a second audio owner. The extension sends only final assistant text through a local user-owned Unix socket; thinking, tool output and subagent replies are not spoken. A missing SpeakHarness instance never blocks the chat. Remove `~/.omp/agent/extensions/speak-harness.js` to uninstall the integration.
 
 ## What it does
 

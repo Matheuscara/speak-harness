@@ -1,6 +1,8 @@
 #!/usr/bin/env bun
 import { readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 import { sendControlCommand } from "../control/client.ts";
 import { startControlServer } from "../control/server.ts";
 import { createApp } from "../core/app.ts";
@@ -19,6 +21,8 @@ export type CliCommand =
   | { kind: "run"; command: string[] }
   | { kind: "say"; source: string | undefined }
   | { kind: "follow" }
+  | { kind: "daemon" }
+  | { kind: "integrate-omp" }
   | { kind: "ctl"; command: string; args: string[] }
   | { kind: "voices-list" }
   | { kind: "voices-install"; voice: string }
@@ -49,6 +53,9 @@ Usage:
   speakh run -- <cmd...>      run a harness inside SpeakHarness (wrap mode)
   speakh say [file|-]         read a markdown file (or stdin) once and exit
   speakh follow               read new answers in this directory aloud, without UI
+  speakh daemon               keep the audio player and control socket running, without UI
+  speakh integrate omp        install the Oh My Pi extension that reads each final reply aloud
+                              (needs a running speakh web, speakh, follow or daemon)
   speakh ctl <command> [args] send a command to the running speakh
   speakh voices [list]        list voices and whether they are installed
   speakh voices install <id>  download a voice (e.g. piper:pt_BR-faber-medium)
@@ -95,6 +102,12 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
     case "follow":
       if (rest.length > 0) throw new UsageError("speakh follow takes no arguments");
       return { kind: "follow" };
+    case "daemon":
+      if (rest.length > 0) throw new UsageError("speakh daemon takes no arguments");
+      return { kind: "daemon" };
+    case "integrate":
+      if (rest.length !== 1 || rest[0] !== "omp") throw new UsageError("usage: speakh integrate omp");
+      return { kind: "integrate-omp" };
     case "ctl": {
       const [command, ...args] = rest;
       if (!command) throw new UsageError("speakh ctl needs a command id, e.g. `speakh ctl replay-message`");
@@ -153,7 +166,11 @@ async function readMarkdown(source: string | undefined): Promise<string> {
 }
 
 function firstLine(message: HarnessMessage): string {
-  const line = message.markdown.split("\n").map((text) => text.replace(/^[#>*\-\s]+/, "").trim()).find((text) => text !== "") ?? "";
+  const line =
+    message.markdown
+      .split("\n")
+      .map((text) => text.replace(/^[#>*\-\s]+/, "").trim())
+      .find((text) => text !== "") ?? "";
   return line.length > 72 ? `${line.slice(0, 71)}…` : line;
 }
 
@@ -195,11 +212,20 @@ async function runWeb(openBrowser: boolean): Promise<void> {
   try {
     if (openBrowser) {
       let opened = false;
-      for (const args of [["xdg-open", web.url], ["gio", "open", web.url], ["open", web.url]]) {
+      for (const args of [
+        ["xdg-open", web.url],
+        ["gio", "open", web.url],
+        ["open", web.url],
+      ]) {
         try {
           const child = Bun.spawn(args, { stdout: "ignore", stderr: "ignore" });
-          if ((await child.exited) === 0) { opened = true; break; }
-        } catch { /* Try the next system opener. */ }
+          if ((await child.exited) === 0) {
+            opened = true;
+            break;
+          }
+        } catch {
+          /* Try the next system opener. */
+        }
       }
       if (!opened) {
         logger.write("warning", `Could not open a browser automatically; use ${web.url}`);
@@ -216,7 +242,12 @@ async function runWeb(openBrowser: boolean): Promise<void> {
 
 async function say(source: string | undefined): Promise<number> {
   const markdown = await readMarkdown(source);
-  const app = await createApp({ cwd: process.cwd(), followSessions: false, autoRead: false, logger });
+  const app = await createApp({
+    cwd: process.cwd(),
+    followSessions: false,
+    autoRead: false,
+    logger,
+  });
   const stopNotices = printNotices(app);
   try {
     const message = app.sessions.addManual(markdown);
@@ -291,6 +322,75 @@ async function follow(): Promise<void> {
   }
 }
 
+/** Audio owner without UI: plays what the control socket hands it (e.g. `speak-text` from the OMP extension). */
+async function daemon(): Promise<void> {
+  const app = await createApp({
+    cwd: process.cwd(),
+    followSessions: false,
+    autoRead: false,
+    logger,
+  });
+  const stopNotices = printNotices(app);
+  try {
+    const control = await startControlServer(app.commands);
+    try {
+      console.log(`SpeakHarness daemon listening on ${control.path} (ctrl+c to stop)`);
+      await waitForSignal();
+    } finally {
+      await control.close();
+    }
+  } finally {
+    stopNotices();
+    await app.dispose();
+  }
+}
+
+export const OMP_EXTENSION_FILE = "speak-harness.js";
+/** First line of the bundled extension; marks an installed file as ours, so reinstalling may replace it. */
+const OMP_EXTENSION_MARKER = "// speak-harness OMP extension";
+
+/** OMP's user agent directory: `$PI_CODING_AGENT_DIR`, else `~/$PI_CONFIG_DIR/agent` (default `~/.omp/agent`). */
+export function ompAgentDir(env: NodeJS.ProcessEnv = process.env): string {
+  return env.PI_CODING_AGENT_DIR || join(homedir(), env.PI_CONFIG_DIR || ".omp", "agent");
+}
+
+/**
+ * Copies the self-contained OMP extension into `<agentDir>/extensions/`. A copy (not a link) so it survives the
+ * SpeakHarness checkout or Nix store path going away. Refuses to replace a file that is not a SpeakHarness extension.
+ */
+export async function installOmpExtension(
+  agentDir: string = ompAgentDir(),
+  source: URL | string = new URL("../integrations/omp.js", import.meta.url),
+): Promise<{ path: string; status: "installed" | "updated" | "unchanged" }> {
+  const content = await readFile(source, "utf8");
+  const path = join(agentDir, "extensions", OMP_EXTENSION_FILE);
+  const existing = await readFile(path, "utf8").catch((error: unknown) => {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") return undefined;
+    throw error;
+  });
+  if (existing === content) return { path, status: "unchanged" };
+  if (existing !== undefined && !existing.startsWith(OMP_EXTENSION_MARKER)) {
+    throw new Error(`${path} already exists and is not the SpeakHarness extension; move it away and run again`);
+  }
+  await mkdir(dirname(path), { recursive: true });
+  // Written next to the target and renamed in, so OMP never loads a half-written module.
+  const temp = join(dirname(path), `.${OMP_EXTENSION_FILE}.${process.pid}.tmp`);
+  try {
+    await writeFile(temp, content, { mode: 0o644 });
+    await rename(temp, path);
+  } catch (error) {
+    await unlink(temp).catch(() => {});
+    throw error;
+  }
+  return { path, status: existing === undefined ? "installed" : "updated" };
+}
+
+async function integrateOmp(): Promise<void> {
+  const { path, status } = await installOmpExtension();
+  console.log(status === "unchanged" ? `Already installed: ${path}` : `${status === "installed" ? "Installed" : "Updated"} ${path}`);
+  console.log("New OMP sessions load it on start; it reads each final reply through a running speakh (web, TUI, follow or daemon).");
+}
+
 async function listVoices(): Promise<void> {
   const engine = createEngineClient();
   try {
@@ -298,7 +398,9 @@ async function listVoices(): Promise<void> {
     const width = Math.max(...voices.map((voice) => voice.id.length));
     for (const voice of voices) {
       const mark = voice.installed ? "✓" : " ";
-      console.log(`${mark} ${voice.id.padEnd(width)}  ${voice.lang.padEnd(5)}  ${formatMegabytes(voice.sizeBytes).padStart(9)}  ${voice.label} (${voice.license})`);
+      console.log(
+        `${mark} ${voice.id.padEnd(width)}  ${voice.lang.padEnd(5)}  ${formatMegabytes(voice.sizeBytes).padStart(9)}  ${voice.label} (${voice.license})`,
+      );
     }
   } finally {
     await engine.close();
@@ -342,7 +444,14 @@ async function showLogs(): Promise<void> {
 
 export async function main(argv: readonly string[]): Promise<number> {
   const command = parseCliArgs(argv);
-  if (command.kind === "tui" || command.kind === "run" || command.kind === "say" || command.kind === "follow" || command.kind === "web") {
+  if (
+    command.kind === "tui" ||
+    command.kind === "run" ||
+    command.kind === "say" ||
+    command.kind === "follow" ||
+    command.kind === "web" ||
+    command.kind === "daemon"
+  ) {
     logger = createFileLogger(paths.logFile());
     logger.write("info", `start \`speakh ${argv.join(" ")}\` · speakh ${readVersion()} · bun ${Bun.version} · cwd ${process.cwd()}`);
   }
@@ -369,6 +478,12 @@ export async function main(argv: readonly string[]): Promise<number> {
       return say(command.source);
     case "follow":
       await follow();
+      return 0;
+    case "daemon":
+      await daemon();
+      return 0;
+    case "integrate-omp":
+      await integrateOmp();
       return 0;
     case "ctl":
       await sendControlCommand(command.command, command.args);

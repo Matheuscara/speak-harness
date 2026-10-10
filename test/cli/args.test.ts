@@ -3,15 +3,30 @@ import { DEFAULT_VOICES, parseCliArgs, UsageError } from "../../src/cli/main.ts"
 
 test("parses every mode", () => {
   expect(parseCliArgs([])).toEqual({ kind: "tui", pickSession: true });
-  expect(parseCliArgs(["--latest"])).toEqual({ kind: "tui", pickSession: false });
+  expect(parseCliArgs(["--latest"])).toEqual({
+    kind: "tui",
+    pickSession: false,
+  });
   expect(parseCliArgs(["--help"])).toEqual({ kind: "help" });
   expect(parseCliArgs(["--version"])).toEqual({ kind: "version" });
-  expect(parseCliArgs(["run", "--", "omp", "--resume"])).toEqual({ kind: "run", command: ["omp", "--resume"] });
-  expect(parseCliArgs(["say", "answer.md"])).toEqual({ kind: "say", source: "answer.md" });
+  expect(parseCliArgs(["run", "--", "omp", "--resume"])).toEqual({
+    kind: "run",
+    command: ["omp", "--resume"],
+  });
+  expect(parseCliArgs(["say", "answer.md"])).toEqual({
+    kind: "say",
+    source: "answer.md",
+  });
   expect(parseCliArgs(["say", "-"])).toEqual({ kind: "say", source: "-" });
   expect(parseCliArgs(["say"])).toEqual({ kind: "say", source: undefined });
   expect(parseCliArgs(["follow"])).toEqual({ kind: "follow" });
-  expect(parseCliArgs(["ctl", "speed-up"])).toEqual({ kind: "ctl", command: "speed-up", args: [] });
+  expect(parseCliArgs(["daemon"])).toEqual({ kind: "daemon" });
+  expect(parseCliArgs(["integrate", "omp"])).toEqual({ kind: "integrate-omp" });
+  expect(parseCliArgs(["ctl", "speed-up"])).toEqual({
+    kind: "ctl",
+    command: "speed-up",
+    args: [],
+  });
   expect(parseCliArgs(["voices"])).toEqual({ kind: "voices-list" });
   expect(parseCliArgs(["voices", "list"])).toEqual({ kind: "voices-list" });
   expect(parseCliArgs(["voices", "install", "piper:pt_BR-faber-medium"])).toEqual({
@@ -25,6 +40,8 @@ test("rejects incomplete or unknown invocations", () => {
   expect(() => parseCliArgs(["run", "--"])).toThrow(UsageError);
   expect(() => parseCliArgs(["ctl"])).toThrow(UsageError);
   expect(() => parseCliArgs(["voices", "install"])).toThrow(UsageError);
+  expect(() => parseCliArgs(["integrate"])).toThrow(UsageError);
+  expect(() => parseCliArgs(["integrate", "codex"])).toThrow(UsageError);
   expect(() => parseCliArgs(["dance"])).toThrow('unknown command "dance"');
 });
 

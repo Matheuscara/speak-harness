@@ -160,7 +160,9 @@ export type CommandId =
   | "command-palette"
   | "settings"
   | "help"
-  | "quit";
+  | "quit"
+  /** `[eventId, markdown, sourceSessionId]` from an integration (the OMP extension); control socket only, never key-bound. */
+  | "speak-text";
 
 export interface Config {
   voices: {
@@ -275,6 +277,8 @@ export interface Command {
   id: CommandId;
   title: string;
   group: "playback" | "navigation" | "voice" | "study" | "app";
+  /** Commands meant only for control-socket integrations are not listed in the TUI palette/help. */
+  hidden?: boolean;
   run(args: string[]): void | Promise<void>;
 }
 

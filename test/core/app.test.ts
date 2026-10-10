@@ -138,7 +138,34 @@ describe("auto-read", () => {
     await env.app.commands.run("auto-read");
     expect(env.app.config.reading.autoRead).toBe(true);
     expect(await readFile(configPath, "utf8")).toContain("auto_read = true");
-    expect(env.events).toContainEqual({ type: "config", config: env.app.config });
+    expect(env.events).toContainEqual({
+      type: "config",
+      config: env.app.config,
+    });
+    await env.app.dispose();
+  });
+});
+
+describe("speak-text", () => {
+  test("queues the latest external reply behind speech, once per event, and leaves the followed session to auto-read", async () => {
+    const env = await setup({ config: autoRead });
+    const answer = env.sessions.emitMessage("First answer.");
+    await flush();
+    const speak = (eventId: string, markdown: string, sessionId: string) => env.app.commands.run("speak-text", [eventId, markdown, sessionId]);
+    await speak("omp:s2:1", "Superseded reply.", "s2");
+    await speak("omp:s2:2", "Other session reply.", "s2");
+    await speak("omp:s2:2", "Other session reply.", "s2");
+    // s1 is the followed OMP session: its transcript is already auto-read.
+    await speak("omp:s1:1", "Followed session reply.", "s1");
+    expect(env.app.playback.state.messageKey).toBe(answer.key);
+    await env.finishAll();
+    await speak("omp:s2:2", "Other session reply.", "s2");
+    await env.finishAll();
+    expect(env.spokenText()).toEqual(["First answer.", "Other session reply."]);
+    expect(env.sessions.service.messages).toEqual([answer]);
+    expect(env.app.selectedMessageKey).toBe(answer.key);
+    await expect(speak("omp:s2:3", "  ", "s2")).rejects.toThrow("empty");
+    await expect(speak("omp:s2:3", "x".repeat(100_001), "s2")).rejects.toThrow("100000 characters");
     await env.app.dispose();
   });
 });
@@ -146,8 +173,13 @@ describe("auto-read", () => {
 describe("selection and commands", () => {
   test("default selection and read-latest skip commentary; message stepping does not", async () => {
     const env = await setup();
-    const answer = env.sessions.emitMessage("The answer.", { historical: true });
-    const narration = env.sessions.emitMessage("Running the tests now.", { historical: true, commentary: true });
+    const answer = env.sessions.emitMessage("The answer.", {
+      historical: true,
+    });
+    const narration = env.sessions.emitMessage("Running the tests now.", {
+      historical: true,
+      commentary: true,
+    });
     expect(env.app.selectedMessageKey).toBe(answer.key);
     await env.app.commands.run("next-message");
     expect(env.app.selectedMessageKey).toBe(narration.key);
@@ -169,16 +201,24 @@ describe("selection and commands", () => {
     await env.app.commands.run("read-latest");
     const fourth = env.sessions.emitMessage("Fourth.");
     expect(env.app.selectedMessageKey).toBe(fourth.key);
-    expect(env.events).toContainEqual({ type: "selection", messageKey: first.key });
+    expect(env.events).toContainEqual({
+      type: "selection",
+      messageKey: first.key,
+    });
     await env.app.dispose();
   });
 
   test("play-pause reads the selected answer when idle, then pauses", async () => {
     const env = await setup();
-    const message = env.sessions.emitMessage("Hello there. How are you?", { historical: true });
+    const message = env.sessions.emitMessage("Hello there. How are you?", {
+      historical: true,
+    });
     await env.app.commands.run("play-pause");
     await flush();
-    expect(env.app.playback.state).toMatchObject({ status: "speaking", messageKey: message.key });
+    expect(env.app.playback.state).toMatchObject({
+      status: "speaking",
+      messageKey: message.key,
+    });
     await env.app.commands.run("play-pause");
     expect(env.app.playback.state.status).toBe("paused");
     await env.app.dispose();
@@ -199,20 +239,28 @@ describe("selection and commands", () => {
 
   test("save-phrase stores the segment being read", async () => {
     const env = await setup();
-    const message = env.sessions.emitMessage("Learning by listening works.", { historical: true });
+    const message = env.sessions.emitMessage("Learning by listening works.", {
+      historical: true,
+    });
     await env.app.commands.run("play-pause");
     await flush();
     await env.app.commands.run("save-phrase");
     const phrases = await env.app.phrases.list();
     expect(phrases).toHaveLength(1);
-    expect(phrases[0]).toMatchObject({ text: "Learning by listening works.", lang: "en", messageKey: message.key });
+    expect(phrases[0]).toMatchObject({
+      text: "Learning by listening works.",
+      lang: "en",
+      messageKey: message.key,
+    });
     await env.app.dispose();
   });
 
   test("command failures become error notices and still reject", async () => {
     // A regular file where the config directory should be makes saving fail.
     await Bun.write(join(dir, "not-a-dir"), "");
-    const env = await setup({ configPath: join(dir, "not-a-dir", "config.toml") });
+    const env = await setup({
+      configPath: join(dir, "not-a-dir", "config.toml"),
+    });
     await expect(env.app.commands.run("auto-read")).rejects.toThrow();
     await flush();
     expect(env.events.some((event) => event.type === "notice" && event.level === "error")).toBe(true);

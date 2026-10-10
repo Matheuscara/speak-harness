@@ -3,16 +3,7 @@ import { createAudioOutput } from "../audio/index.ts";
 import { createEngineClient } from "../engine/client.ts";
 import { findVoice } from "../engine/catalog.ts";
 import { createCommandRegistry } from "./commands.ts";
-import {
-  cloneConfig,
-  DEFAULT_CONFIG,
-  parseConfig,
-  readConfig,
-  saveConfig,
-  serializeConfig,
-  unknownVoiceWarnings,
-  watchConfig,
-} from "./config/index.ts";
+import { cloneConfig, DEFAULT_CONFIG, parseConfig, readConfig, saveConfig, serializeConfig, unknownVoiceWarnings, watchConfig } from "./config/index.ts";
 import { NO_LOG, type Logger } from "./log.ts";
 import { paths } from "./paths.ts";
 import { createPhraseStore } from "./phrases.ts";
@@ -85,6 +76,12 @@ const VOICE_LABELS: Record<VoiceOverride, string> = {
   alternate: "alternate",
 };
 
+/** Longest `speak-text` reply accepted (the OMP extension truncates to this). */
+const MAX_SPEAK_TEXT_CHARS = 100_000;
+const MAX_EVENT_ID_CHARS = 512;
+/** Accepted `speak-text` event ids remembered for deduplication; the oldest are forgotten first. */
+const SPOKEN_EVENTS_LIMIT = 256;
+
 export async function createApp(options: AppOptions): Promise<AppCore> {
   const listeners = new Set<(event: AppEvent) => void>();
   /** Notices raised before anyone subscribed (e.g. config errors at startup) are delivered to the first subscriber. */
@@ -127,7 +124,12 @@ export async function createApp(options: AppOptions): Promise<AppCore> {
   const audio = options.audio ?? lazyAudioOutput();
   const sessions = options.sessions ?? createSessionService(createAdapters(config.harnesses.enabled));
   const phrases = options.phrases ?? createPhraseStore();
-  const playback = createPlaybackController({ engine, audio, config: () => config, sleep: options.sleep });
+  const playback = createPlaybackController({
+    engine,
+    audio,
+    config: () => config,
+    sleep: options.sleep,
+  });
   const commands = createCommandRegistry();
 
   // ---------- speech scripts ----------
@@ -137,7 +139,11 @@ export async function createApp(options: AppOptions): Promise<AppCore> {
     const cached = scripts.get(message.key);
     if (cached && cached.version === configVersion && cached.markdown === message.markdown) return cached.script;
     const script = buildSpeechScript(message.key, message.markdown, speechOptions());
-    scripts.set(message.key, { version: configVersion, markdown: message.markdown, script });
+    scripts.set(message.key, {
+      version: configVersion,
+      markdown: message.markdown,
+      script,
+    });
     return script;
   };
 
@@ -186,6 +192,37 @@ export async function createApp(options: AppOptions): Promise<AppCore> {
   const autoReadSeen = new Set<string>();
   const autoReadEnabled = (): boolean => autoReadOverride ?? config.reading.autoRead;
 
+  // ---------- external replies (`speak-text`) ----------
+  /**
+   * Newest reply from an integration waiting for the player. External replies never interrupt speech, never
+   * join the followed session's messages or selection, and only the latest one waits.
+   */
+  let pendingExternal: SpeechScript | undefined;
+  const spokenEvents = new Set<string>();
+  const speakExternal = (args: string[]): void => {
+    if (args.length !== 3) throw new Error("speak-text expects [eventId, markdown, sourceSessionId]");
+    const [eventId = "", markdown = "", sourceSessionId = ""] = args;
+    if (eventId.trim() === "" || eventId.length > MAX_EVENT_ID_CHARS) {
+      throw new Error(`speak-text: the event id must have 1–${MAX_EVENT_ID_CHARS} characters`);
+    }
+    if (markdown.trim() === "") throw new Error("speak-text: the reply is empty");
+    if (markdown.length > MAX_SPEAK_TEXT_CHARS) throw new Error(`speak-text: the reply exceeds ${MAX_SPEAK_TEXT_CHARS} characters`);
+    if (spokenEvents.has(eventId)) return;
+    spokenEvents.add(eventId);
+    if (spokenEvents.size > SPOKEN_EVENTS_LIMIT) spokenEvents.delete(spokenEvents.values().next().value as string);
+    // The followed transcript already auto-reads this reply; speaking it here too would play it twice.
+    const followed = sessions.session;
+    if (autoReadEnabled() && followed?.harness === "omp" && followed.id === sourceSessionId) return;
+    const script = buildSpeechScript(eventId, markdown, speechOptions());
+    if (script.segments.length === 0) return;
+    if (playback.state.status !== "idle") {
+      pendingExternal = script;
+      return;
+    }
+    pendingExternal = undefined;
+    playback.play(script);
+  };
+
   const unsubscribeSessions = sessions.subscribe((event) => {
     if (event.type === "warning") {
       notice("warning", `${event.harness}: ${event.message}`);
@@ -221,6 +258,11 @@ export async function createApp(options: AppOptions): Promise<AppCore> {
     if (becameIdle && !state.error) {
       const next = autoReadQueue.shift();
       if (next) readMessage(next);
+      if (pendingExternal && playback.state.status === "idle") {
+        const script = pendingExternal;
+        pendingExternal = undefined;
+        playback.play(script);
+      }
     }
   });
 
@@ -255,7 +297,9 @@ export async function createApp(options: AppOptions): Promise<AppCore> {
           configPath,
           (next) => applyConfig(next),
           (error) => notice("error", `${error.message}\nKeeping the last valid config.`),
-          { onWarnings: (warnings) => warnings.forEach((warning) => notice("warning", `Config: ${warning}`)) },
+          {
+            onWarnings: (warnings) => warnings.forEach((warning) => notice("warning", `Config: ${warning}`)),
+          },
         );
 
   // ---------- commands ----------
@@ -307,10 +351,7 @@ export async function createApp(options: AppOptions): Promise<AppCore> {
       return;
     }
     const currentBlock = playingSelection() ? playback.script?.segments[playback.state.segmentIndex]?.blockIndex : undefined;
-    const block =
-      currentBlock === undefined
-        ? tableBlocks[0]
-        : (tableBlocks.find((candidate) => candidate >= currentBlock) ?? tableBlocks.at(-1));
+    const block = currentBlock === undefined ? tableBlocks[0] : (tableBlocks.find((candidate) => candidate >= currentBlock) ?? tableBlocks.at(-1));
     const table = block === undefined ? undefined : buildTableScript(message.key, message.markdown, block, speechOptions());
     if (!table || table.segments.length === 0) {
       notice("info", "This table has no rows to read.");
@@ -344,6 +385,7 @@ export async function createApp(options: AppOptions): Promise<AppCore> {
       "playback",
       () => {
         autoReadQueue.length = 0;
+        pendingExternal = undefined;
         playback.stop();
       },
     ],
@@ -412,7 +454,12 @@ export async function createApp(options: AppOptions): Promise<AppCore> {
           notice("info", "Nothing is being read.");
           return;
         }
-        await phrases.save({ text: segment.text, lang: segment.lang, messageKey: script.messageKey, savedAt: new Date() });
+        await phrases.save({
+          text: segment.text,
+          lang: segment.lang,
+          messageKey: script.messageKey,
+          savedAt: new Date(),
+        });
         notice("info", `Saved phrase: ${segment.text}`);
       },
     ],
@@ -421,12 +468,14 @@ export async function createApp(options: AppOptions): Promise<AppCore> {
     ["voice-alternate", "Voice: alternate", "voice", () => setVoice("alternate")],
     ["speed-up", "Speed up", "voice", () => playback.setSpeed(playback.state.speed + 0.1)],
     ["speed-down", "Slow down", "voice", () => playback.setSpeed(playback.state.speed - 0.1)],
+    ["speak-text", "Speak a reply from an integration", "playback", speakExternal],
   ];
   for (const [id, title, group, run] of core) {
     commands.register({
       id,
       title,
       group,
+      hidden: id === "speak-text",
       async run(args) {
         try {
           await run(args);

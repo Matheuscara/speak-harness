@@ -30,7 +30,11 @@ export function fuzzyScore(query: string, text: string): number | undefined {
 
 export function filterCommands(commands: readonly Command[], query: string): Command[] {
   return commands
-    .map((command, order) => ({ command, order, score: fuzzyScore(query, `${command.title} ${command.id}`) }))
+    .map((command, order) => ({
+      command,
+      order,
+      score: fuzzyScore(query, `${command.title} ${command.id}`),
+    }))
     .filter((entry): entry is { command: Command; order: number; score: number } => entry.score !== undefined)
     .sort((a, b) => b.score - a.score || a.order - b.order)
     .map((entry) => entry.command);
@@ -56,7 +60,7 @@ export function paletteOverlay(host: OverlayHost): Overlay {
   list.marginTop = 1;
   root.add(input);
   root.add(list);
-  const commands = app.commands.list();
+  const commands = app.commands.list().filter((command) => !command.hidden);
   const update = () => {
     const matches = filterCommands(commands, input.value);
     list.options =
@@ -64,7 +68,11 @@ export function paletteOverlay(host: OverlayHost): Overlay {
         ? [{ name: "No matching command", description: "" }]
         : matches.map((command) => {
             const keys = keysOf(host, command.id);
-            return { name: command.title, description: `  ${command.id}${keys ? ` · ${keys}` : ""}`, value: command.id };
+            return {
+              name: command.title,
+              description: `  ${command.id}${keys ? ` · ${keys}` : ""}`,
+              value: command.id,
+            };
           });
     list.setSelectedIndex(0);
   };
@@ -100,7 +108,7 @@ const GROUP_TITLES: Record<Command["group"], string> = {
 /** Cheat-sheet lines: commands grouped, each with its live bindings. */
 export function cheatSheet(host: OverlayHost): TextChunk[] {
   const out: TextChunk[] = [];
-  const commands = host.app.commands.list();
+  const commands = host.app.commands.list().filter((command) => !command.hidden);
   const leader = host.app.config.keys.leader;
   if (leader) out.push(chunk("Leader ", { fg: theme.muted }), chunk(host.keys.format(leader), { fg: theme.code, bold: true }), chunk("\n", {}));
   for (const group of Object.keys(GROUP_TITLES) as Command["group"][]) {
@@ -118,8 +126,15 @@ export function cheatSheet(host: OverlayHost): TextChunk[] {
 export function helpOverlay(host: OverlayHost): Overlay {
   const { renderer } = host;
   const root = createPanel(renderer, "overlay-help", "Keys", "j/k scroll · esc close");
-  const scroll = new ScrollBoxRenderable(renderer, { id: "help-scroll", flexGrow: 1, verticalScrollbarOptions: { visible: false } });
-  const text = new TextRenderable(renderer, { id: "help-text", wrapMode: "word" });
+  const scroll = new ScrollBoxRenderable(renderer, {
+    id: "help-scroll",
+    flexGrow: 1,
+    verticalScrollbarOptions: { visible: false },
+  });
+  const text = new TextRenderable(renderer, {
+    id: "help-text",
+    wrapMode: "word",
+  });
   scroll.add(text);
   root.add(scroll);
   const refresh = () => {
