@@ -6,6 +6,7 @@
   makeWrapper,
   autoPatchelfHook,
   writableTmpDirAsHomeHook,
+  alacritty,
 }:
 
 let
@@ -141,15 +142,16 @@ stdenv.mkDerivation {
         ]
       } ${lib.optionalString isLinux "--prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ stdenv.cc.cc.lib ]}"}
     ${lib.optionalString isLinux ''
-      # Desktop entry opens the existing OpenTUI interface in the user's default terminal.
+      # Many Wayland compositors (including niri) have no default terminal registered for Terminal=true.
+      # Launch OpenTUI explicitly in a known terminal instead of relying on that desktop integration.
       mkdir -p $out/share/applications
       printf '%s\n' \
         '[Desktop Entry]' \
         'Type=Application' \
         'Name=SpeakHarness' \
         'Comment=Listen to AI coding-harness answers' \
-        "Exec=$out/bin/speakh" \
-        'Terminal=true' \
+        "Exec=${lib.getExe alacritty} -e $out/bin/speakh" \
+        'Terminal=false' \
         'Icon=audio-speakers' \
         'Categories=Utility;Audio;' \
         > $out/share/applications/speak-harness.desktop
