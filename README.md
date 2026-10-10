@@ -23,7 +23,7 @@
 ---
 
 <p align="center">
-  <img src="assets/dashboard.webp" alt="SpeakHarness dashboard displaying a fictional OMP conversation, playback controls and session explorer" width="1100">
+  <img src="assets/dashboard-en.webp" alt="SpeakHarness dashboard in English, displaying a fictional OMP conversation, playback controls and session explorer" width="1100">
 </p>
 <p align="center"><sub>Actual local dashboard with a fictional example conversation; no personal transcript data.</sub></p>
 
@@ -81,7 +81,7 @@ Open the dashboard from the same project directory and pick the conversation und
 | Study mode | Sentence replay, slower repeat, optional shadowing pause and saved phrases. |
 
 <p align="center">
-  <img src="assets/settings.webp" alt="SpeakHarness settings drawer showing local voices and playback speed controls" width="1000">
+  <img src="assets/settings-en.webp" alt="SpeakHarness settings drawer in English, showing local voices and playback speed controls" width="1000">
 </p>
 <p align="center"><sub>The same real dashboard, using example data.</sub></p>
 
