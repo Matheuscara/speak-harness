@@ -1,0 +1,803 @@
+const key = document.querySelector('meta[name="speakh-key"]').content;
+const el = (id) => document.getElementById(id);
+const by = (selector) => document.querySelector(selector);
+const create = (tag, className, text) => {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+};
+
+let snapshot;
+let sessionData = {
+  sessions: [],
+  counts: {},
+  total: 0,
+  hidden: 0,
+  hereCount: 0,
+};
+let voiceData = { voices: [], installations: {} };
+let scope = "here";
+let harness = "all";
+let query = "";
+let technical = false;
+let settingsTab = "audio";
+let lastMarkdown = "";
+let lastRange = "";
+let previousSession = "";
+let lastSettings = "";
+let lastMessages = "";
+let toastTimer;
+let searchTimer;
+let refreshing = false;
+let refreshAgain = false;
+
+async function api(path, payload) {
+  const response = await fetch(path, {
+    method: payload === undefined ? "GET" : "POST",
+    headers: {
+      "X-Speakh-Key": key,
+      ...(payload === undefined ? {} : { "Content-Type": "application/json" }),
+    },
+    body: payload === undefined ? undefined : JSON.stringify(payload),
+    cache: "no-store",
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  return data;
+}
+
+function toast(text, error = false) {
+  const node = el("toast");
+  node.textContent = text;
+  node.classList.toggle("error", error);
+  node.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    node.hidden = true;
+  }, 5000);
+}
+
+async function action(path, body) {
+  try {
+    await api(path, body);
+    await refreshState();
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+async function command(id) {
+  await action("/api/command", { id });
+}
+
+function shortVoice(id) {
+  const item = voiceData.voices.find((v) => v.id === id);
+  if (item) return item.label.replace(/\s*\([^)]*\)$/, "");
+  return (
+    id
+      ?.split(":")
+      .at(-1)
+      ?.replace(/^pt_BR-([^-]+)-.*/, "$1")
+      .replace(/^[a-z]{2}_/, "") || "—"
+  );
+}
+function shortDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+function sessionKey(session) {
+  return `${session.harness}:${session.id}`;
+}
+function renderState(data) {
+  const oldSession = previousSession;
+  snapshot = data;
+  const s = data.session;
+  const p = data.playback;
+  const message = data.messages.find((m) => m.key === data.selectedKey);
+  const sessionTitle =
+    s?.title || (s ? `Sessão ${s.id.slice(0, 8)}` : "Escolha uma conversa");
+  previousSession = s ? sessionKey(s) : "";
+  el("hero-session-title").textContent = sessionTitle;
+  el("hero-session-meta").textContent = s
+    ? `${s.harness.toUpperCase()}  ·  ${s.cwd || "sessão local"}`
+    : "OMP · Pi · Codex · Claude Code";
+  el("reader-harness").textContent = s?.harness.toUpperCase() || "SEM SESSÃO";
+  el("reader-message-title").textContent =
+    message?.title || "Selecione uma resposta";
+  const sameAnswer = p.messageKey && p.messageKey === data.selectedKey;
+  const displayedStatus = sameAnswer ? p.status : "idle";
+  const statusName = {
+    idle: "PRONTO",
+    preparing: "PREPARANDO",
+    speaking: "REPRODUZINDO",
+    paused: "PAUSADO",
+    "study-wait": "MODO ESTUDO",
+  };
+  el("reader-state").textContent =
+    statusName[displayedStatus] || displayedStatus;
+  el("reader-state").classList.toggle(
+    "playing",
+    displayedStatus === "speaking",
+  );
+  by(".reader-card").dataset.playing =
+    displayedStatus === "speaking" ? "true" : "false";
+  const count = data.script?.segments.length || 0;
+  const index =
+    sameAnswer && p.segmentCount
+      ? Math.min(p.segmentIndex + 1, p.segmentCount)
+      : 0;
+  el("spotlight-position").textContent = count
+    ? `${index || 1} / ${count}`
+    : "— / —";
+  const phrase =
+    data.activeText || data.script?.segments[index ? index - 1 : 0]?.text;
+  el("spotlight-text").textContent =
+    phrase ||
+    "Escolha uma sessão à direita. Depois, aperte play para ouvir uma resposta.";
+  const percent = count && index ? Math.round((index / count) * 100) : 0;
+  el("progress-label").textContent = `${percent}%`;
+  el("progress-fill").style.width = `${percent}%`;
+  const language = sameAnswer ? p.lang : data.script?.dominantLang;
+  el("reader-language").textContent =
+    `IDIOMA ${language?.toUpperCase() || "—"}`;
+  const voice =
+    (sameAnswer && p.voice) || data.config.voices.languages[language || "en"];
+  el("reader-voice").textContent = `VOZ ${shortVoice(voice)}`;
+  const playing =
+    displayedStatus === "speaking" || displayedStatus === "preparing";
+  el("play-button").innerHTML = playing
+    ? "Ⅱ <span>PAUSAR</span>"
+    : displayedStatus === "paused"
+      ? "▶ <span>CONTINUAR</span>"
+      : "▶ <span>OUVIR</span>";
+  el("play-button").setAttribute(
+    "aria-label",
+    playing ? "Pausar leitura" : "Ler resposta",
+  );
+  el("study-button").classList.toggle("active", p.studyMode);
+  el("study-button").querySelector("span").textContent = p.studyMode
+    ? "ON"
+    : "OFF";
+  el("play-button").disabled = !message;
+  el("save-phrase").disabled = !sameAnswer || !p.segmentCount;
+  if (p.error && sameAnswer) toast(p.error, true);
+  const rangeKey = `${p.messageKey}:${p.segmentIndex}:${p.status}`;
+  if (lastMarkdown !== data.markdown || lastRange !== rangeKey) {
+    const article = el("answer-html");
+    const scroll = article.scrollTop;
+    article.innerHTML =
+      data.html ||
+      '<p class="empty-copy">Sua resposta aparece aqui ao selecionar uma conversa.</p>';
+    if (lastMarkdown === data.markdown && article.querySelector("mark"))
+      article
+        .querySelector("mark")
+        .scrollIntoView({ block: "nearest", behavior: "smooth" });
+    else article.scrollTop = data.markdown === lastMarkdown ? scroll : 0;
+    lastMarkdown = data.markdown;
+    lastRange = rangeKey;
+  }
+  renderMessages(data.messages, data.selectedKey);
+  const settingsHash =
+    JSON.stringify(data.config) +
+    JSON.stringify(voiceData.voices.map((v) => [v.id, v.installed]));
+  if (!el("settings-drawer").hidden && settingsHash !== lastSettings)
+    renderSettings();
+  if (oldSession !== previousSession) refreshSessions();
+}
+
+function renderMessages(messages, selected) {
+  const fingerprint = `${selected || ""}\\0${messages.map((message) => `${message.key}:${message.title}:${message.createdAt}:${message.commentary}`).join("\\0")}`;
+  if (fingerprint === lastMessages) return;
+  lastMessages = fingerprint;
+  el("message-count").textContent = String(
+    messages.filter((m) => !m.commentary).length,
+  ).padStart(2, "0");
+  const list = el("message-list");
+  list.replaceChildren();
+  if (!messages.length) {
+    list.append(create("p", "empty-copy", "Nenhuma resposta nesta sessão."));
+    return;
+  }
+  for (const [index, message] of [...messages].reverse().entries()) {
+    const button = create(
+      "button",
+      `message-item${message.key === selected ? " selected" : ""}${message.commentary ? " commentary" : ""}`,
+    );
+    button.type = "button";
+    const title = create("span", "message-title");
+    title.append(
+      create(
+        "span",
+        "message-no",
+        `#${String(messages.length - index).padStart(2, "0")}`,
+      ),
+      document.createTextNode(message.title),
+    );
+    button.append(
+      title,
+      create(
+        "small",
+        "",
+        `${shortDate(message.createdAt)}  /  ${message.commentary ? "NARRAÇÃO" : "RESPOSTA"}`,
+      ),
+    );
+    button.addEventListener("click", () =>
+      action("/api/message", { key: message.key }),
+    );
+    list.append(button);
+  }
+}
+
+async function refreshState() {
+  if (refreshing) {
+    refreshAgain = true;
+    return;
+  }
+  refreshing = true;
+  try {
+    renderState(await api("/api/state"));
+  } catch (error) {
+    toast(error.message, true);
+  } finally {
+    refreshing = false;
+    if (refreshAgain) {
+      refreshAgain = false;
+      void refreshState();
+    }
+  }
+}
+
+async function refreshSessions() {
+  const params = new URLSearchParams({
+    scope,
+    harness,
+    q: query,
+    technical: technical ? "1" : "0",
+  });
+  try {
+    const data = await api(`/api/sessions?${params}`);
+    // A slow older search must never overwrite the result of a newer keystroke.
+    if (
+      params.toString() !==
+      new URLSearchParams({
+        scope,
+        harness,
+        q: query,
+        technical: technical ? "1" : "0",
+      }).toString()
+    )
+      return;
+    sessionData = data;
+    renderSessions();
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+function renderSessions() {
+  el("sessions-count").textContent =
+    `${sessionData.sessions.length} / ${sessionData.total}${sessionData.hidden ? ` · ${sessionData.hidden} OCULTAS` : ""}`;
+  for (const button of document.querySelectorAll("[data-scope]"))
+    button.classList.toggle("selected", button.dataset.scope === scope);
+  const filters = el("harness-filters");
+  filters.replaceChildren();
+  for (const [id, label] of [
+    ["all", "TODOS"],
+    ["omp", "OMP"],
+    ["pi", "PI"],
+    ["codex", "CODEX"],
+    ["claude-code", "CLAUDE"],
+  ]) {
+    const button = create("button", harness === id ? "selected" : "", label);
+    button.type = "button";
+    button.dataset.filterHarness = id;
+    button.setAttribute("aria-pressed", String(harness === id));
+    button.addEventListener("click", () => {
+      harness = id;
+      void refreshSessions();
+    });
+    filters.append(button);
+  }
+  const list = el("session-list");
+  list.replaceChildren();
+  if (!sessionData.sessions.length) {
+    list.append(
+      create(
+        "p",
+        "empty-copy",
+        sessionData.hereCount === 0 && scope === "here"
+          ? "Nenhuma conversa nesta pasta. Escolha TODAS acima."
+          : "Nenhuma conversa com esses filtros. Mude o harness ou a busca.",
+      ),
+    );
+  } else {
+    for (const session of sessionData.sessions) {
+      const selected =
+        snapshot?.session &&
+        sessionKey(session) === sessionKey(snapshot.session);
+      const item = create(
+        "button",
+        `session-item${selected ? " selected" : ""}${session.hasReadableAnswer === false ? " technical" : ""}`,
+      );
+      item.type = "button";
+      item.dataset.session = sessionKey(session);
+      item.append(
+        create(
+          "span",
+          "session-harness",
+          `${session.harness.toUpperCase()}  /  ${selected ? "EM FOCO" : "SESSÃO"}`,
+        ),
+        create(
+          "strong",
+          "",
+          session.title || `Sem título · ${session.id.slice(0, 8)}`,
+        ),
+        create(
+          "small",
+          "",
+          `${session.cwd?.split("/").filter(Boolean).at(-1) || "local"}  ·  ${shortDate(session.updatedAt)}`,
+        ),
+      );
+      item.addEventListener("click", async () => {
+        await action("/api/follow", { key: sessionKey(session) });
+        if (matchMedia("(max-width: 980px)").matches)
+          el("sessions-panel").classList.remove("open");
+      });
+      list.append(item);
+    }
+  }
+  const chart = el("harness-chart");
+  chart.replaceChildren();
+  const max = Math.max(1, ...Object.values(sessionData.counts));
+  for (const [id, label] of [
+    ["omp", "OMP"],
+    ["pi", "PI"],
+    ["codex", "CODEX"],
+    ["claude-code", "CLAUDE"],
+  ]) {
+    const count = sessionData.counts[id] || 0;
+    const row = create("div", "chart-row");
+    const track = create("div", "chart-track");
+    const fill = create("div", "chart-fill");
+    fill.style.width = `${Math.round((count / max) * 100)}%`;
+    track.append(fill);
+    row.append(
+      create("span", "", label),
+      track,
+      create("strong", "", String(count)),
+    );
+    chart.append(row);
+  }
+}
+
+async function refreshVoices() {
+  try {
+    voiceData = await api("/api/voices");
+    if (snapshot && !el("settings-drawer").hidden) renderSettings();
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+function group(parent, title, description = "") {
+  const node = create("div", "setting-group");
+  node.append(create("div", "setting-heading", title));
+  if (description) node.append(create("p", "setting-desc", description));
+  parent.append(node);
+  return node;
+}
+function slider(
+  parent,
+  path,
+  title,
+  description,
+  min,
+  max,
+  step,
+  value,
+  unit = "×",
+) {
+  const node = group(parent, title, description);
+  const valueLabel = create(
+    "span",
+    "",
+    `${Number(value).toFixed(2).replace(/0$/, "").replace(/\.$/, "")}${unit}`,
+  );
+  node.firstChild.append(valueLabel);
+  const input = create("input");
+  input.type = "range";
+  input.min = String(min);
+  input.max = String(max);
+  input.step = String(step);
+  input.value = String(value);
+  input.setAttribute("aria-label", title);
+  input.addEventListener("input", () => {
+    valueLabel.textContent = `${Number(input.value).toFixed(2).replace(/0$/, "").replace(/\.$/, "")}${unit}`;
+  });
+  input.addEventListener("change", () =>
+    action("/api/setting", { path, value: Number(input.value) }),
+  );
+  node.append(input);
+}
+function toggle(parent, path, title, description, value) {
+  const node = create("label", "switch-row");
+  const words = create("span");
+  words.append(create("strong", "", title), create("small", "", description));
+  const input = create("input");
+  input.type = "checkbox";
+  input.checked = !!value;
+  input.addEventListener("change", () =>
+    action("/api/setting", { path, value: input.checked }),
+  );
+  node.append(words, input);
+  parent.append(node);
+}
+function choice(parent, path, title, description, options, value) {
+  const node = group(parent, title, description);
+  const select = create("select");
+  select.setAttribute("aria-label", title);
+  for (const [id, label] of options) {
+    const option = create("option", "", label);
+    option.value = id;
+    select.append(option);
+  }
+  select.value = value;
+  select.addEventListener("change", () =>
+    action("/api/setting", { path, value: select.value }),
+  );
+  node.append(select);
+}
+function voiceChoice(parent, path, title, language, value) {
+  choice(
+    parent,
+    path,
+    title,
+    "Voz local para este papel. Instale modelos na aba Vozes.",
+    voiceData.voices
+      .filter((v) => !language || v.lang === language)
+      .map((v) => [v.id, `${v.label}${v.installed ? "" : " · não instalada"}`]),
+    value,
+  );
+}
+function renderSettings() {
+  if (!snapshot) return;
+  const c = snapshot.config;
+  lastSettings =
+    JSON.stringify(c) +
+    JSON.stringify(voiceData.voices.map((v) => [v.id, v.installed]));
+  const panel = el("settings-content");
+  panel.replaceChildren();
+  for (const button of document.querySelectorAll("[data-settings-tab]"))
+    button.classList.toggle(
+      "selected",
+      button.dataset.settingsTab === settingsTab,
+    );
+  if (settingsTab === "audio") {
+    slider(
+      panel,
+      "voices.speed",
+      "Velocidade da leitura",
+      "Persistida para as próximas sessões; ajuste de 0,1×.",
+      0.5,
+      2,
+      0.1,
+      c.voices.speed,
+    );
+    toggle(
+      panel,
+      "voices.autoLanguage",
+      "Trocar voz por idioma",
+      "Detecta inglês e português por parágrafo.",
+      c.voices.autoLanguage,
+    );
+    voiceChoice(
+      panel,
+      "voices.languages.en",
+      "Inglês",
+      "en",
+      c.voices.languages.en,
+    );
+    voiceChoice(
+      panel,
+      "voices.languages.pt-BR",
+      "Português brasileiro",
+      "pt-BR",
+      c.voices.languages["pt-BR"],
+    );
+    voiceChoice(
+      panel,
+      "voices.primary",
+      "Voz principal",
+      null,
+      c.voices.primary,
+    );
+    voiceChoice(
+      panel,
+      "voices.alternate",
+      "Voz alternativa",
+      null,
+      c.voices.alternate,
+    );
+  } else if (settingsTab === "reading") {
+    toggle(
+      panel,
+      "reading.autoRead",
+      "Ler novas respostas automaticamente",
+      "Ouve o harness enquanto você continua trabalhando.",
+      c.reading.autoRead,
+    );
+    choice(
+      panel,
+      "reading.autoReadQueue",
+      "Fila de respostas",
+      "Quando a próxima resposta chega durante a fala.",
+      [
+        ["latest", "Só a mais recente"],
+        ["all", "Todas, em ordem"],
+      ],
+      c.reading.autoReadQueue,
+    );
+    choice(
+      panel,
+      "reading.tables",
+      "Tabelas",
+      "O que falar quando aparecer uma tabela.",
+      [
+        ["summary", "Resumir colunas"],
+        ["rows", "Ler todas as linhas"],
+      ],
+      c.reading.tables,
+    );
+    toggle(
+      panel,
+      "reading.quoteCue",
+      "Anunciar citações",
+      "Diz quando um trecho é uma citação.",
+      c.reading.quoteCue,
+    );
+  } else if (settingsTab === "study") {
+    toggle(
+      panel,
+      "study.pauseAfterSentence",
+      "Pausar a cada frase",
+      "Continue no seu ritmo para praticar pronúncia.",
+      c.study.pauseAfterSentence,
+    );
+    toggle(
+      panel,
+      "study.shadowing",
+      "Silêncio para repetição",
+      "Reserve tempo para repetir a frase em voz alta.",
+      c.study.shadowing,
+    );
+    slider(
+      panel,
+      "study.shadowingFactor",
+      "Duração do silêncio",
+      "Proporcional ao tempo da frase falada.",
+      0.5,
+      3,
+      0.25,
+      c.study.shadowingFactor,
+    );
+    slider(
+      panel,
+      "study.slowerSpeed",
+      "Velocidade de repetir devagar",
+      "Usada ao clicar em MAIS LENTO.",
+      0.3,
+      1,
+      0.05,
+      c.study.slowerSpeed,
+    );
+  } else {
+    const head = create(
+      "p",
+      "setting-desc",
+      "Modelos são baixados e sintetizados na sua máquina. Nenhuma resposta é enviada a um serviço externo.",
+    );
+    panel.append(head);
+    for (const voice of voiceData.voices) {
+      const row = create("div", "voice-row");
+      row.append(
+        create("strong", "", voice.label),
+        create(
+          "small",
+          "",
+          `${voice.engine.toUpperCase()} / ${voice.lang.toUpperCase()} / ${Math.round(voice.sizeBytes / 1e6)} MB / ${voice.license}`,
+        ),
+      );
+      const progress = voiceData.installations[voice.id];
+      if (progress?.error)
+        row.append(create("small", "", `Falha: ${progress.error}`));
+      if (progress && !progress.error) {
+        row.append(
+          create(
+            "small",
+            "",
+            `Instalando… ${progress.total ? Math.floor((progress.done / progress.total) * 100) : 0}%`,
+          ),
+        );
+        const track = create("span", "install-progress");
+        const fill = create("i");
+        fill.style.width = `${progress.total ? Math.floor((progress.done / progress.total) * 100) : 0}%`;
+        track.append(fill);
+        row.append(track);
+      } else if (voice.installed)
+        row.append(create("small", "", "● INSTALADA"));
+      else {
+        const button = create("button", "", "INSTALAR LOCALMENTE ↓");
+        button.type = "button";
+        button.addEventListener("click", async () => {
+          await action("/api/install", { voice: voice.id });
+          await refreshVoices();
+        });
+        row.append(button);
+      }
+      panel.append(row);
+    }
+  }
+}
+function openDrawer(name) {
+  el("settings-drawer").hidden = name !== "settings";
+  el("phrases-drawer").hidden = name !== "phrases";
+  if (name === "settings") {
+    renderSettings();
+    void refreshVoices();
+  }
+  if (name === "phrases") void refreshPhrases();
+  document.body.classList.toggle("drawer-open", !!name);
+}
+async function refreshPhrases() {
+  try {
+    const { phrases } = await api("/api/phrases");
+    const target = el("phrases-content");
+    target.replaceChildren();
+    if (!phrases.length) {
+      target.append(
+        create(
+          "p",
+          "empty-copy",
+          "Nenhuma frase salva. Aperte ＋ SALVAR FRASE enquanto ouve.",
+        ),
+      );
+      return;
+    }
+    for (const phrase of [...phrases].reverse()) {
+      const row = create("div", "phrase-row");
+      row.append(
+        create("strong", "", phrase.text),
+        create("small", "", `${phrase.lang}  /  ${shortDate(phrase.savedAt)}`),
+      );
+      const button = create("button", "", "▶ OUVIR FRASE");
+      button.addEventListener("click", () =>
+        action("/api/phrase", { text: phrase.text, lang: phrase.lang }),
+      );
+      row.append(button);
+      target.append(row);
+    }
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+for (const button of document.querySelectorAll("[data-command]"))
+  button.addEventListener("click", () => command(button.dataset.command));
+for (const button of document.querySelectorAll("[data-view]"))
+  button.addEventListener("click", () => {
+    for (const item of document.querySelectorAll("[data-view]"))
+      item.classList.toggle("selected", item === button);
+    const view = button.dataset.view;
+    if (view === "settings" || view === "phrases") openDrawer(view);
+    else if (view === "sessions") {
+      openDrawer(null);
+      el("sessions-panel").classList.add("open");
+      el("session-search").focus();
+    } else {
+      openDrawer(null);
+      el("sessions-panel").classList.remove("open");
+      el("main-content").scrollIntoView({ behavior: "smooth" });
+    }
+  });
+el("top-settings").addEventListener("click", () => openDrawer("settings"));
+el("sessions-toggle").addEventListener("click", () => {
+  el("sessions-panel").classList.add("open");
+  el("session-search").focus();
+});
+el("close-settings").addEventListener("click", () => openDrawer(null));
+el("close-phrases").addEventListener("click", () => openDrawer(null));
+for (const backdrop of document.querySelectorAll(".drawer-backdrop"))
+  backdrop.addEventListener("click", (event) => {
+    if (event.target === backdrop) openDrawer(null);
+  });
+for (const button of document.querySelectorAll("[data-settings-tab]"))
+  button.addEventListener("click", () => {
+    settingsTab = button.dataset.settingsTab;
+    renderSettings();
+  });
+for (const button of document.querySelectorAll("[data-scope]"))
+  button.addEventListener("click", () => {
+    scope = button.dataset.scope;
+    void refreshSessions();
+  });
+el("show-technical").addEventListener("change", (event) => {
+  technical = event.target.checked;
+  void refreshSessions();
+});
+el("session-search").addEventListener("input", (event) => {
+  query = event.target.value;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => void refreshSessions(), 120);
+});
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    openDrawer(null);
+    el("sessions-panel").classList.remove("open");
+    return;
+  }
+  if (
+    event.target instanceof HTMLInputElement ||
+    event.target instanceof HTMLSelectElement ||
+    !el("settings-drawer").hidden ||
+    !el("phrases-drawer").hidden
+  )
+    return;
+  const commands = {
+    " ": "play-pause",
+    ArrowLeft: "prev-sentence",
+    ArrowRight: "next-sentence",
+    r: "repeat-sentence",
+    a: "auto-read",
+    s: "stop",
+  };
+  if (commands[event.key]) {
+    event.preventDefault();
+    void command(commands[event.key]);
+  } else if (event.key === ",") {
+    event.preventDefault();
+    openDrawer("settings");
+  } else if (event.key === "/") {
+    event.preventDefault();
+    el("sessions-panel").classList.add("open");
+    el("session-search").focus();
+  }
+});
+window.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    void refreshState();
+    void refreshSessions();
+  }
+});
+
+const stream = new EventSource(`/events?key=${encodeURIComponent(key)}`);
+stream.addEventListener("change", () => {
+  void refreshState();
+  if (Object.keys(voiceData.installations).length) void refreshVoices();
+});
+stream.addEventListener("notice", (event) => {
+  const note = JSON.parse(event.data);
+  toast(note.text, note.level === "error");
+});
+stream.onopen = () => {
+  el("connection-state").classList.add("online");
+  el("connection-state").innerHTML = "<i></i> CONECTADO";
+};
+stream.onerror = () => {
+  el("connection-state").classList.remove("online");
+  el("connection-state").innerHTML = "<i></i> RECONECTANDO";
+};
+void Promise.all([refreshState(), refreshSessions(), refreshVoices()]);
+setInterval(() => {
+  if (!document.hidden) void refreshSessions();
+}, 30_000);
+// A heartbeat is independent of the SSE transport: some Bun/browser pairs do not surface stream cancellation.
+// Keeping it active in background tabs preserves automatic reading while the user codes elsewhere.
+setInterval(() => {
+  void api("/api/ping").catch(() => {});
+}, 30_000);

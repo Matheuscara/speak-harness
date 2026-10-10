@@ -1,15 +1,16 @@
 # SpeakHarness
 
-Read AI coding-harness answers aloud from your terminal — locally. Follows OMP, Pi, Codex and Claude Code sessions, turns markdown into natural speech (code blocks are announced, never read), and picks the voice per paragraph: Kokoro for English, Piper for Brazilian Portuguese.
+Read AI coding-harness answers aloud in a local graphical dashboard or terminal UI. SpeakHarness follows OMP, Pi, Codex and Claude Code sessions, turns markdown into natural speech (code blocks are announced, never read), and picks a voice per paragraph: Kokoro for English, Piper for Brazilian Portuguese.
 
 ## Install
 
 ```sh
 nix profile add github:Matheuscara/speak-harness
-speakh
+speakh web        # graphical dashboard
+speakh            # terminal interface
 ```
 
-On Linux, the Nix package also installs a **SpeakHarness** application-menu entry that opens the terminal interface. The development-only command `bun src/cli/main.ts` is not needed to use the app. For a one-off run without installing: `nix run github:Matheuscara/speak-harness`.
+On Linux, the Nix package installs **SpeakHarness** (opens the browser dashboard) and **SpeakHarness Terminal** (opens OpenTUI in Alacritty) in the application menu. The dashboard is served only on `127.0.0.1` with a per-launch key; it uses the same local AppCore as OpenTUI, with no account or hosted service. It shuts down after the browser disconnects and stays idle. For a one-off TUI run: `nix run github:Matheuscara/speak-harness`.
 
 `speakh setup` downloads the default voices (Kokoro q4 ~305 MB, Piper faber ~63 MB) into `~/.cache/speak-harness`. Audio plays through `pw-play`, `paplay`, `aplay`, `afplay` or `ffplay`.
 
@@ -17,6 +18,8 @@ On Linux, the Nix package also installs a **SpeakHarness** application-menu entr
 
 | Command | What it does |
 | --- | --- |
+| `speakh web` | Open the local graphical dashboard in your browser |
+| `speakh web --no-open` | Serve it locally and print the URL without opening a tab |
 | `speakh` | Reader panel: asks which harness session to read (esc = newest in this directory) |
 | `speakh --latest` | Reader panel following the newest session here, without asking |
 | `speakh run -- omp` | Runs the harness inside SpeakHarness with the reader beside it: `ctrl+g` then a key runs one command; `ctrl+g` then `→` keeps the keyboard in the reader until `esc` or `←` |

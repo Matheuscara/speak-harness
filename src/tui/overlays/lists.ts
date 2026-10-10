@@ -2,9 +2,10 @@
 
 import { BoxRenderable, InputRenderable, InputRenderableEvents, type SelectOption } from "@opentui/core";
 import { basename } from "node:path";
+import { messageTitle } from "../../core/message-title.ts";
 import type { Phrase, SessionRef } from "../../core/types.ts";
 import { buildSpeechScript, speechOptionsFromConfig } from "../../core/speech/index.ts";
-import { clock, createLine, createList, createPanel, messageTitle, relativeTime, type Overlay, type OverlayHost } from "./panel.ts";
+import { clock, createLine, createList, createPanel, relativeTime, type Overlay, type OverlayHost } from "./panel.ts";
 import { countBar, filterSessions, HARNESSES, isTechnicalSession, sessionCounts, sessionId, type SessionHarness } from "./session-filter.ts";
 import { theme } from "../theme.ts";
 

@@ -76,17 +76,6 @@ export function createLine(renderer: CliRenderer, id: string, fg: string = theme
   return new TextRenderable(renderer, { id, height: 1, flexShrink: 0, wrapMode: "none", truncate: true, fg, bg: theme.overlayBg });
 }
 
-/** One-line plain title for an answer: first non-empty line without markdown markers. */
-export function messageTitle(markdown: string, max = 70): string {
-  const line = markdown.split("\n").find((l) => l.trim() !== "") ?? "";
-  const plain = line
-    .replace(/^\s*(#{1,6}\s+|[-*+]\s+|\d+[.)]\s+|>\s*)/, "")
-    .replace(/[*_`~]/g, "")
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .trim();
-  return plain.length > max ? `${plain.slice(0, max - 1)}…` : plain || "(empty answer)";
-}
-
 export function clock(date: Date): string {
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }

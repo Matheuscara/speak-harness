@@ -11,9 +11,11 @@ import { resolveVoice } from "../core/playback/voices.ts";
 import type { AppCore, EngineClient, HarnessMessage, Lang, SessionRef } from "../core/types.ts";
 import { findVoice } from "../engine/catalog.ts";
 import { createEngineClient } from "../engine/client.ts";
+import { startWebServer } from "../web/server.ts";
 
 export type CliCommand =
   | { kind: "tui"; pickSession: boolean }
+  | { kind: "web"; openBrowser: boolean }
   | { kind: "run"; command: string[] }
   | { kind: "say"; source: string | undefined }
   | { kind: "follow" }
@@ -42,6 +44,8 @@ export const HELP = `speakh — read AI coding-harness answers aloud
 Usage:
   speakh                      reader TUI; asks which harness session to read (esc = newest here)
   speakh --latest             reader TUI following the newest session of this directory, no question
+  speakh web                  open the local graphical dashboard in your browser
+  speakh web --no-open        serve locally and print the address without opening a tab
   speakh run -- <cmd...>      run a harness inside SpeakHarness (wrap mode)
   speakh say [file|-]         read a markdown file (or stdin) once and exit
   speakh follow               read new answers in this directory aloud, without UI
@@ -77,6 +81,9 @@ export function parseCliArgs(argv: readonly string[]): CliCommand {
     case "-v":
     case "--version":
       return { kind: "version" };
+    case "web":
+      if (rest.length > 1 || (rest.length === 1 && rest[0] !== "--no-open")) throw new UsageError("usage: speakh web [--no-open]");
+      return { kind: "web", openBrowser: rest.length === 0 };
     case "run": {
       const command = rest[0] === "--" ? rest.slice(1) : rest;
       if (command.length === 0) throw new UsageError("speakh run needs a command, e.g. `speakh run -- omp`");
@@ -170,6 +177,38 @@ async function runInteractive(wrapCommand: string[] | undefined, pickSession = f
     const { runTui } = await import("../tui/index.ts");
     await runTui(app, wrapCommand ? { wrapCommand } : { pickSession });
   } finally {
+    await control?.close();
+    await app.dispose();
+  }
+}
+
+async function runWeb(openBrowser: boolean): Promise<void> {
+  const cwd = process.cwd();
+  const app = await createApp({ cwd, logger });
+  const control = await startControlServer(app.commands).catch((error: unknown) => {
+    logger.write("warning", `control socket unavailable: ${describeError(error)}`);
+    return undefined;
+  });
+  const web = startWebServer(app, { cwd });
+  logger.write("info", `web dashboard listening at ${web.url}`);
+  console.log(`SpeakHarness dashboard: ${web.url}`);
+  try {
+    if (openBrowser) {
+      let opened = false;
+      for (const args of [["xdg-open", web.url], ["gio", "open", web.url], ["open", web.url]]) {
+        try {
+          const child = Bun.spawn(args, { stdout: "ignore", stderr: "ignore" });
+          if ((await child.exited) === 0) { opened = true; break; }
+        } catch { /* Try the next system opener. */ }
+      }
+      if (!opened) {
+        logger.write("warning", `Could not open a browser automatically; use ${web.url}`);
+        console.error(`Open ${web.url} in your browser.`);
+      }
+    }
+    await Promise.race([web.closed, waitForSignal().then(() => web.close())]);
+  } finally {
+    web.close();
     await control?.close();
     await app.dispose();
   }
@@ -303,7 +342,7 @@ async function showLogs(): Promise<void> {
 
 export async function main(argv: readonly string[]): Promise<number> {
   const command = parseCliArgs(argv);
-  if (command.kind === "tui" || command.kind === "run" || command.kind === "say" || command.kind === "follow") {
+  if (command.kind === "tui" || command.kind === "run" || command.kind === "say" || command.kind === "follow" || command.kind === "web") {
     logger = createFileLogger(paths.logFile());
     logger.write("info", `start \`speakh ${argv.join(" ")}\` · speakh ${readVersion()} · bun ${Bun.version} · cwd ${process.cwd()}`);
   }
@@ -319,6 +358,9 @@ export async function main(argv: readonly string[]): Promise<number> {
       return 0;
     case "tui":
       await runInteractive(undefined, command.pickSession);
+      return 0;
+    case "web":
+      await runWeb(command.openBrowser);
       return 0;
     case "run":
       await runInteractive(command.command);
