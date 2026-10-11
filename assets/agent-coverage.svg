@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="610" viewBox="0 0 960 610" role="img" aria-labelledby="title desc">
+<title id="title">Automatic coding-agent speech: documented coverage</title>
+<desc id="desc">SpeakHarness supports four named coding harnesses: OMP, Pi, Codex and Claude Code. Aloud supports two: Codex and Claude Code. claudio-tts supports one: Claude Code. Counts describe built-in automatic reply integrations, not speed or quality. Checked October 11, 2026.</desc>
+<rect width="960" height="610" rx="18" fill="#100e0d"/>
+<g font-family="Arial,Helvetica,sans-serif">
+<text x="40" y="44" fill="#e86b5c" font-size="13" letter-spacing="2">SPEAKHARNESS / DOCUMENTED COMPARISON</text>
+<text x="40" y="86" fill="#f3f0eb" font-size="30" font-weight="700">More agents. One listening desk.</text>
+<text x="40" y="115" fill="#bcaea6" font-size="16">Built-in automatic reply integrations · distinct named coding harnesses</text>
+<g stroke="#362d29" stroke-width="1"><path d="M240 145V318 M400 145V318 M560 145V318 M720 145V318 M880 145V318"/></g>
+<g font-size="18" fill="#f3f0eb"><text x="40" y="183" font-weight="700">SpeakHarness</text><text x="40" y="243">Aloud</text><text x="40" y="303">claudio-tts</text></g>
+<rect x="240" y="155" width="640" height="40" rx="4" fill="#e86b5c"/><rect x="240" y="215" width="320" height="40" rx="4" fill="#819d94"/><rect x="240" y="275" width="160" height="40" rx="4" fill="#819d94"/>
+<g font-size="21" fill="#100e0d" font-weight="700"><text x="852" y="182">4</text><text x="532" y="242">2</text><text x="372" y="302">1</text></g>
+<g font-size="13" fill="#bcaea6" text-anchor="middle"><text x="240" y="340">0</text><text x="400" y="340">1</text><text x="560" y="340">2</text><text x="720" y="340">3</text><text x="880" y="340">4</text></g>
+<text x="40" y="390" fill="#f3f0eb" font-size="19" font-weight="700">What is actually counted?</text>
+<g fill="#bcaea6" font-size="15" text-anchor="middle"><text x="340" y="422">OMP</text><text x="500" y="422">Pi</text><text x="660" y="422">Codex</text><text x="820" y="422">Claude Code</text></g>
+<g fill="#f3f0eb" font-size="16"><text x="40" y="453">SpeakHarness</text><text x="40" y="485">Aloud</text><text x="40" y="517">claudio-tts</text></g>
+<g fill="#e86b5c"><circle cx="340" cy="447" r="7"/><circle cx="500" cy="447" r="7"/><circle cx="660" cy="447" r="7"/><circle cx="820" cy="447" r="7"/></g>
+<g fill="#819d94"><circle cx="660" cy="479" r="7"/><circle cx="820" cy="479" r="7"/><circle cx="820" cy="511" r="7"/></g>
+<g fill="#bcaea6" font-size="18" text-anchor="middle"><text x="340" y="485">—</text><text x="500" y="485">—</text><text x="340" y="517">—</text><text x="500" y="517">—</text><text x="660" y="517">—</text></g>
+<path d="M40 542H920" stroke="#362d29"/>
+<text x="40" y="568" fill="#bcaea6" font-size="14">Filled dot = documented integration. Dash = not listed. Sources and method below.</text>
+<text x="40" y="590" fill="#bcaea6" font-size="13">Checked 2026-10-11 · Not a latency, voice-quality, popularity or reliability benchmark.</text>
+</g></svg>

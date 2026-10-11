@@ -172,6 +172,27 @@ speakh daemon
 
 SpeakHarness is a **listening companion for coding sessions you already have**, not a microphone interface that requires the agent to change how it works. It can follow an existing OMP, Pi, Codex or Claude Code transcript, turn the final Markdown reply into a speech script, and let you navigate the answer while listening.
 
+![Documented automatic reply coverage: SpeakHarness 4 harnesses, Aloud 2, claudio-tts 1; integration map below the bars](assets/agent-coverage.svg)
+
+**Four agents, one app:** SpeakHarness has **2× the named automatic-reply integrations of Aloud** and **4× those of claudio-tts** in this comparison. That is a coverage count, **not “2× faster” or “4× better.”** If you switch between OMP, Pi, Codex and Claude Code, you can keep the same listening controls instead of changing voice tools.
+
+<details>
+<summary>Chart data, sources and counting rules</summary>
+
+| Project | Count | Integrations counted | Source |
+| --- | ---: | --- | --- |
+| SpeakHarness v0.2.0 | 4 | OMP, Pi, Codex, Claude Code | [Transcript adapters](https://github.com/Matheuscara/speak-harness/tree/v0.2.0/src/adapters) |
+| Aloud | 2 | Claude Code, Codex | [README: supported agents and hooks](https://github.com/softcane/aloud#how-aloud-works) |
+| claudio-tts | 1 | Claude Code | [README: turn-event integration](https://github.com/restante/claudio-tts#-built-on-claude-code-mods) |
+
+Snapshot: **2026-10-11**. Count one named coding harness with a documented built-in path for automatic spoken replies after enabling it. Hooks, mod events and transcript polling qualify; they are different integration mechanisms, not identical experiences. OMP and Pi count separately because they are separate supported harnesses. Generic terminal capture, manually pasted text and generic MCP compatibility do not count as dedicated automatic integrations.
+
+This chart compares the two direct automatic-reply tools above, **not the entire market**. lisn, VoiceMode and DashVox have different invocation/control models and are discussed below, not assigned a misleading zero. Missing entries mean “not documented in these sources,” not “impossible.” The bars start at zero and use the same scale.
+
+The chart does not measure speech latency, CPU/RAM, pronunciation, reliability or user adoption. Those require an identical-hardware benchmark or user study; we have not run one. For language breadth, claudio-tts advertises **9 voice languages**, while SpeakHarness deliberately supports automatic routing for **English and pt-BR**. More agent integrations does not imply more languages.
+
+</details>
+
 | Product | Coding-agent sources | How speech starts | Reading surface |
 | --- | --- | --- | --- |
 | **SpeakHarness** | **4** transcript adapters: OMP, Pi, Codex, Claude Code | Optional automatic follow of existing sessions; local English Kokoro + pt-BR Piper, selected per paragraph | Native desktop on **5** OS/CPU targets; browser and OpenTUI also available |
