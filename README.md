@@ -6,11 +6,12 @@
 
 <p align="center">
   A local voice companion for <strong>OMP, Pi, Codex and Claude Code</strong>.<br>
-  Listen to their Markdown answers in English and Brazilian Portuguese, from a graphical dashboard or a terminal UI.
+  Listen to their Markdown answers in English and Brazilian Portuguese, from a desktop window, browser dashboard or terminal UI.
 </p>
 
 <p align="center">
   <a href="https://github.com/Matheuscara/speak-harness/actions/workflows/ci.yml"><img src="https://github.com/Matheuscara/speak-harness/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+  <a href="https://github.com/Matheuscara/speak-harness/actions/workflows/desktop.yml"><img src="https://github.com/Matheuscara/speak-harness/actions/workflows/desktop.yml/badge.svg?branch=main" alt="Desktop installers status"></a>
   <a href="https://github.com/Matheuscara/speak-harness/stargazers"><img src="https://img.shields.io/github/stars/Matheuscara/speak-harness?style=flat-square" alt="GitHub stars"></a>
   <a href="https://github.com/Matheuscara/speak-harness/issues"><img src="https://img.shields.io/badge/issues-welcome-e86b5c?style=flat-square" alt="Issues welcome"></a>
   <img src="https://img.shields.io/badge/audio-local-17100f?style=flat-square" alt="Local audio">
@@ -45,7 +46,7 @@ The interface, controls and documentation are in English. This does not change t
 
 Download the installer for your CPU and operating system from [GitHub Releases](https://github.com/Matheuscara/speak-harness/releases/latest): **Windows x64** (`SpeakHarness-Setup-*.exe`), **Linux x64/ARM64** (`.deb` for Debian/Ubuntu or `.AppImage` for other glibc desktops), or **macOS Apple Silicon/Intel** (`.dmg`). On Windows, run the installer and launch SpeakHarness from Start; on macOS, drag SpeakHarness into Applications; on Linux, install the `.deb` or make the AppImage executable and run it. The desktop window starts the same loopback-only dashboard as `speakh web`, using bundled Bun, Node.js and native synthesis libraries. You can still use the browser without installing Electron.
 
-The installers are built on each native CPU/OS runner. The [desktop build workflow](https://github.com/Matheuscara/speak-harness/actions/workflows/desktop.yml) checks the installed package, its dashboard window, and local English/pt-BR voice synthesis before attaching it to a release. The first use downloads voice models (approximately **305 MB for Kokoro q4** and **63 MB for Piper Faber**) into your user cache; your transcripts remain local. Packages are currently **unsigned/not notarized** without maintainer signing credentials: Windows may show SmartScreen and macOS Gatekeeper may require opening the app explicitly in Privacy & Security. Linux needs a graphical session and a working system audio player (PipeWire, PulseAudio, ALSA or ffplay); the desktop package does not configure your speakers.
+The installers are built on each native CPU/OS runner. The [desktop build workflow](https://github.com/Matheuscara/speak-harness/actions/workflows/desktop.yml) installs each package, renders its dashboard window, and synthesizes English and pt-BR speech locally before attaching it to a release. Each release includes `SHA256SUMS-desktop.txt` for checking downloaded packages. The first use downloads voice models (approximately **305 MB for Kokoro q4** and **63 MB for Piper Faber**) into your user cache; your transcripts remain local. Windows installers are **unsigned** (SmartScreen may warn); macOS apps have an **ad-hoc signature but are not notarized** (Gatekeeper may require opening the app explicitly in Privacy & Security). Linux needs a graphical session and a working system audio player (PipeWire, PulseAudio, ALSA or ffplay); the desktop package does not configure your speakers.
 
 ### Nix (recommended on NixOS)
 
@@ -161,7 +162,7 @@ SpeakHarness reads harness session files **without writing to them**. Synthesis,
 
 ## Status, contributing and license
 
-SpeakHarness is an early public release. Browser mode and local English/pt-BR synthesis have been exercised on **NixOS x86_64** and **Debian x64**; the Linux x64 desktop AppImage/window has been exercised locally. Other CPU/OS combinations are checked by the [native desktop workflow](https://github.com/Matheuscara/speak-harness/actions/workflows/desktop.yml); consult its result and the available release assets rather than assuming your target is verified. Audio samples and installed-window rendering are checked in CI, but physical speakers and signing/notarization are not. The packages target glibc Linux desktops rather than Alpine/musl; Windows ARM64 is not packaged. Transcript formats can change between harness versions. Please [open an issue](https://github.com/Matheuscara/speak-harness/issues) with a scrubbed sample if an adapter stops recognizing your sessions, or send a PR with a fixture and a behavioral test.
+SpeakHarness is an early public release. Browser mode and local English/pt-BR synthesis have been exercised on **NixOS x86_64** and **Debian x64**. The [native installer run](https://github.com/Matheuscara/speak-harness/actions/runs/38112663697) passed on **Windows x64, Linux x64/ARM64, and macOS Intel/Apple Silicon**: on each runner it built and installed the package, loaded the dashboard, synthesized both languages through the bundled Node worker, and exited cleanly. Linux AppImage windows were exercised too. CI checks audio samples and rendering, **not audible playback through physical speakers**; signing/notarization also require maintainer credentials. Packages target glibc Linux desktops, not Alpine/musl; Windows ARM64 is not packaged. Transcript formats can change between harness versions. Please [open an issue](https://github.com/Matheuscara/speak-harness/issues) with a scrubbed sample if an adapter stops recognizing your sessions, or send a PR with a fixture and a behavioral test.
 
 ```sh
 bun test
