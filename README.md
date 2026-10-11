@@ -41,6 +41,8 @@ Coding agents return long answers full of headings, links, tables and code. Send
 
 The interface, controls and documentation are in English. This does not change the language of your transcripts: pt-BR text is still spoken in Portuguese.
 
+**Verified scope in v0.2.0:** **4** native coding-harness adapters · **5** native desktop OS/CPU targets · **2** locally synthesized languages with per-paragraph switching · **3** reading surfaces (desktop, browser, terminal). The [release build](https://github.com/Matheuscara/speak-harness/actions/runs/38113001768) installed the desktop package, loaded its window and synthesized English and pt-BR speech on all five targets; it did not test physical speakers.
+
 ## Quick start
 
 ### Desktop installers (no Bun or Node.js setup)
@@ -112,7 +114,23 @@ speakh daemon
 <p align="center">
   <img src="assets/settings-en.webp" alt="SpeakHarness Voices settings in Brazilian Portuguese, showing sample playback, voice selection and model installation" width="1000">
 </p>
-<p align="center"><sub>Voices are grouped by language; previews play in your browser and models are installed locally.</sub></p>
+<p align="center"><sub>Voices are grouped by language; previews play in the desktop app or browser and models are installed locally.</sub></p>
+
+## How it compares
+
+SpeakHarness is a **listening companion for coding sessions you already have**, not a microphone interface that requires the agent to change how it works. It can follow an existing OMP, Pi, Codex or Claude Code transcript, turn the final Markdown reply into a speech script, and let you navigate the answer while listening.
+
+| Product | Coding-agent sources | How speech starts | Reading surface |
+| --- | --- | --- | --- |
+| **SpeakHarness** | **4** transcript adapters: OMP, Pi, Codex, Claude Code | Optional automatic follow of existing sessions; local English Kokoro + pt-BR Piper, selected per paragraph | Native desktop on **5** OS/CPU targets; browser and OpenTUI also available |
+| [Aloud](https://github.com/softcane/aloud) | **2**: Claude Code and Codex | Per-session opt-in; speaks local Kokoro summaries plus questions and approval alerts | macOS daemon, commands and hotkeys; no separate reading window described |
+| [claudio-tts](https://github.com/restante/claudio-tts) | **1**: Claude Code | Turn events inside Claude Code; local Kokoro with **9** advertised voice languages | Claude Code slash commands; macOS and beta Windows installers |
+| [lisn](https://github.com/Gauravwagh/lisn) | **3** agent integrations via skill/MCP: Claude Code, Codex, Gemini | Agent invokes the reader; local Kokoro or Piper, optional online Edge voices | TUI and browser extension; also reads documents and web pages |
+| [DashVox](https://dashvox.ai/) | Claude Code and Codex over SSH | Voice-driven agent sessions with spoken output and verbal approvals; [self-hosted server is free](https://dashvox.ai/pricing) | Phone, watch and CarPlay, rather than a passive local desktop reader |
+
+These are **documented capabilities, not head-to-head performance measurements**. Product descriptions and supported platforms were checked on **2026-10-11** against each linked project's own documentation; an unlisted feature is not proof that it cannot be added. We did not run competitors on identical hardware, so this table makes no speed, speech-quality or reliability ranking. GitHub stars measure reach, not reading quality, and are intentionally not used as a score.
+
+The trade-off is real: Aloud surfaces approval requests that SpeakHarness currently leaves silent; claudio-tts offers more voice languages; lisn reads more document formats; DashVox adds remote voice control. SpeakHarness instead focuses on **passively following four existing coding-harness formats**, bilingual Markdown-aware narration, and a dedicated local reading window. For two-way microphone conversations, [VoiceMode](https://voicemode.dev/) solves a different problem. [Claude's own voice mode](https://support.claude.com/en/articles/11101966-use-voice-mode) speaks in the Claude app, but Anthropic says it is not available as spoken output in Claude Code.
 
 ## Supported harnesses
 
