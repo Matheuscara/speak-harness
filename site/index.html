@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#100e0d" />
+    <meta
+      name="description"
+      content="Your coding agents write. SpeakHarness speaks. A local desktop listening desk for OMP, Pi, Codex and Claude Code. English and Brazilian Portuguese, no cloud TTS."
+    />
+    <meta property="og:title" content="SpeakHarness — read with your ears" />
+    <meta
+      property="og:description"
+      content="Hear your coding agents. Keep your eyes on the code. Local speech for OMP, Pi, Codex and Claude Code on Windows, Linux and macOS."
+    />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:image"
+      content="https://matheuscara.github.io/speak-harness/assets/dashboard-en.webp"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <title>SpeakHarness — Your coding agents write. SpeakHarness speaks.</title>
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="header">
+      <a class="brand" href="#" aria-label="SpeakHarness home"
+        ><img src="assets/icon.svg" width="36" height="36" alt="" /><span
+          >SPEAK<span class="accent">HARNESS</span></span
+        ></a
+      >
+      <nav aria-label="Main navigation">
+        <a href="#experience">The app</a><a href="#compare">Compare</a
+        ><a href="https://github.com/Matheuscara/speak-harness"
+          >GitHub <span aria-hidden="true">↗</span></a
+        >
+      </nav>
+      <a class="button button-small" href="#download"
+        >Get the desktop app <span aria-hidden="true">↓</span></a
+      >
+    </header>
+
+    <main id="main">
+      <section class="hero section-wrap" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">
+            <span class="status-dot" aria-hidden="true"></span> Local voice for
+            coding agents <span class="version">v0.2.0</span>
+          </p>
+          <h1 id="hero-title">
+            READ WITH<br />YOUR <span class="accent">EARS.</span>
+          </h1>
+          <p class="hero-lead">
+            Your coding agents write.<br /><strong>SpeakHarness speaks.</strong>
+          </p>
+          <p class="hero-description">
+            Hear the answer while you review the code. A native desktop
+            listening desk for the agent sessions you already use.
+          </p>
+          <div class="hero-actions">
+            <a class="button" href="#download"
+              >Download desktop <span aria-hidden="true">↓</span></a
+            ><a class="text-link" href="#experience"
+              >See how it works <span aria-hidden="true">↗</span></a
+            >
+          </div>
+          <p class="hero-note">
+            Windows · Linux · macOS<br /><span
+              >No TTS account. No per-word bill.</span
+            >
+          </p>
+        </div>
+        <div class="hero-product">
+          <div class="product-label">
+            <span>01 / YOUR LISTENING DESK</span
+            ><span
+              ><span class="status-dot" aria-hidden="true"></span> LOCAL
+              AUDIO</span
+            >
+          </div>
+          <a
+            class="product-window"
+            href="assets/dashboard-en.webp"
+            data-preview="Listening desk — fictional example conversation"
+            aria-label="Enlarge the SpeakHarness listening desk screenshot"
+          >
+            <div class="window-top">
+              <span class="window-mark" aria-hidden="true">H</span
+              ><span>SpeakHarness</span
+              ><span class="window-platform">DESKTOP APP</span>
+            </div>
+            <img
+              src="assets/dashboard-en.webp"
+              alt="SpeakHarness with a selected OMP session, current spoken sentence, playback controls and answer history"
+              width="1024"
+              height="800"
+              fetchpriority="high"
+            />
+            <span class="expand-label"
+              >Explore the interface <span aria-hidden="true">↗</span></span
+            >
+          </a>
+          <p class="image-note">
+            Actual listening UI. Fictional conversation, not personal data.
+          </p>
+          <div class="sound-caption">
+            <span class="wave" aria-hidden="true"
+              ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+              ><i></i><i></i></span
+            ><span
+              >One answer at a time.<br /><strong
+                >No cloud TTS. No noise.</strong
+              ></span
+            >
+          </div>
+        </div>
+      </section>
+
+      <div class="agent-strip" aria-label="Supported coding agents">
+        <span>ALREADY IN YOUR WORKFLOW</span><strong>Oh My Pi</strong
+        ><strong>Pi</strong><strong>Codex</strong><strong>Claude Code</strong>
+      </div>
+
+      <section
+        class="section-wrap experience"
+        id="experience"
+        aria-labelledby="experience-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">02 / LESS SCROLLING. MORE LISTENING.</p>
+            <h2 id="experience-title">
+              Keep your eyes<br />on <span class="accent">the code.</span>
+            </h2>
+          </div>
+          <p>
+            Not another chat window.<br />A better way to take in the answer.
+          </p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span class="card-index">01 — CONNECT</span>
+            <h3>Pick a session.<br />Keep working.</h3>
+            <p>
+              Open an existing OMP, Pi, Codex or Claude Code conversation. No
+              copy-paste. No need to restart your agent.
+            </p>
+            <div class="card-footer">
+              <span class="status-dot" aria-hidden="true"></span> Existing
+              transcripts, read-only
+            </div>
+          </article>
+          <article class="feature-card">
+            <span class="card-index">02 — LISTEN</span>
+            <h3>The explanation.<br />Not the syntax.</h3>
+            <p>
+              Markdown becomes a speech script. Links are read by label; code
+              blocks are announced instead of recited.
+            </p>
+            <div class="card-footer">LOCAL SYNTHESIS / KOKORO + PIPER</div>
+          </article>
+          <article class="feature-card">
+            <span class="card-index">03 — REVISIT</span>
+            <h3>A sentence worth<br />hearing twice.</h3>
+            <p>
+              Pause, replay, repeat slower or save a phrase. Move through the
+              written answer without losing your place.
+            </p>
+            <div class="key-row">
+              <kbd>Space</kbd><span>pause</span><kbd>R</kbd><span>repeat</span
+              ><kbd>←</kbd><kbd>→</kbd>
+            </div>
+          </article>
+        </div>
+        <div class="workflow">
+          <strong>Open the app</strong><span aria-hidden="true">→</span
+          ><strong>Choose a session</strong><span aria-hidden="true">→</span
+          ><strong>Press Play</strong>
+          <p>
+            Want hands-free reading? Enable
+            <em>Read new answers automatically</em> in Settings.
+          </p>
+        </div>
+      </section>
+
+      <section
+        class="language-section section-wrap"
+        aria-labelledby="language-title"
+      >
+        <div class="language-copy">
+          <p class="eyebrow">03 / TWO LANGUAGES. ONE CONVERSATION.</p>
+          <h2 id="language-title">
+            English.<br />Português.<br /><span class="accent"
+              >Naturally local.</span
+            >
+          </h2>
+          <p>
+            English goes to Kokoro. Brazilian Portuguese goes to Piper. Language
+            detection runs per paragraph, so a bilingual answer doesn't need a
+            manual voice switch.
+          </p>
+          <div class="language-tags">
+            <span>EN / KOKORO</span><span>PT-BR / PIPER</span>
+          </div>
+          <p class="small-note">
+            The app interface is in English. Speech and language detection run
+            on your computer after the initial model download.
+          </p>
+        </div>
+        <a
+          class="settings-preview"
+          href="assets/settings-en.webp"
+          data-preview="Settings — English and Brazilian Portuguese voice selection"
+          aria-label="Enlarge voice settings screenshot"
+          ><img
+            src="assets/settings-en.webp"
+            alt="SpeakHarness voice settings showing local Brazilian Portuguese voices and preview buttons"
+            width="1024"
+            height="800"
+            loading="lazy"
+          /><span class="expand-label"
+            >Find your voice <span aria-hidden="true">↗</span></span
+          ></a
+        >
+      </section>
+
+      <section
+        class="section-wrap comparison"
+        id="compare"
+        aria-labelledby="compare-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">04 / A WIDER LISTENING DESK</p>
+            <h2 id="compare-title">
+              Four agents.<br /><span class="accent">One app.</span>
+            </h2>
+          </div>
+          <p>
+            Switch agents, not listening tools.<br />Here's what the documented
+            coverage looks like.
+          </p>
+        </div>
+        <div class="comparison-layout">
+          <div
+            class="chart"
+            role="img"
+            aria-label="Built-in automatic spoken-reply integrations: SpeakHarness 4, Aloud 2, claudio-tts 1. Counts reflect documentation checked October 11, 2026, not a performance benchmark."
+          >
+            <p class="chart-title">Automatic spoken-reply integrations</p>
+            <div class="chart-row">
+              <div class="chart-name">
+                <strong>SpeakHarness</strong
+                ><span>OMP · Pi · Codex · Claude Code</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar ours" style="--value: 100%"><b>4</b></div>
+              </div>
+            </div>
+            <div class="chart-row">
+              <div class="chart-name">
+                <strong>Aloud</strong><span>Codex · Claude Code</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar" style="--value: 50%"><b>2</b></div>
+              </div>
+            </div>
+            <div class="chart-row">
+              <div class="chart-name">
+                <strong>claudio-tts</strong><span>Claude Code</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar" style="--value: 25%"><b>1</b></div>
+              </div>
+            </div>
+            <div class="chart-axis" aria-hidden="true">
+              <span>0</span><span>1</span><span>2</span><span>3</span
+              ><span>4</span>
+            </div>
+            <p class="small-note">
+              Same scale, starting at zero. Coverage, not speed or voice
+              quality.
+            </p>
+          </div>
+          <div class="comparison-copy">
+            <span class="big-stat">4<span>/ agents</span></span>
+            <h3>Follow the sessions<br />you already have.</h3>
+            <p>
+              SpeakHarness reads existing local transcripts and brings them into
+              one desktop reader, with English/pt-BR narration and
+              sentence-level controls.
+            </p>
+            <p class="small-note">
+              Other tools have strengths too: Aloud voices approval alerts;
+              claudio-tts advertises more voice languages. More integrations
+              doesn't mean better at everything.
+            </p>
+            <a
+              class="text-link"
+              href="https://github.com/Matheuscara/speak-harness#how-it-compares"
+              >Read the full comparison <span aria-hidden="true">↗</span></a
+            >
+          </div>
+        </div>
+        <details class="method">
+          <summary>
+            Sources &amp; counting method <span aria-hidden="true">+</span>
+          </summary>
+          <div>
+            <p>
+              Checked <strong>October 11, 2026</strong>. We count each named
+              coding harness with a documented built-in path for automatic
+              spoken replies after enabling it. Transcript polling, hooks and
+              mod events qualify, but are different mechanisms. OMP and Pi are
+              counted separately. Generic terminal capture and manually invoked
+              MCP tools are not dedicated automatic integrations.
+            </p>
+            <p>
+              Sources:
+              <a
+                href="https://github.com/Matheuscara/speak-harness/tree/v0.2.0/src/adapters"
+                >SpeakHarness adapters</a
+              >, <a href="https://github.com/softcane/aloud">Aloud README</a>,
+              <a href="https://github.com/restante/claudio-tts"
+                >claudio-tts README</a
+              >. This is a comparison with two direct alternatives, not the
+              entire market. We have not run an identical-hardware benchmark and
+              make no latency, reliability or voice-quality ranking.
+            </p>
+          </div>
+        </details>
+        <div class="proof-strip">
+          <div><strong>5</strong><span>native OS/CPU targets</span></div>
+          <div>
+            <strong>2</strong><span>locally synthesized languages</span>
+          </div>
+          <div><strong>0</strong><span>hosted TTS accounts required</span></div>
+          <a
+            href="https://github.com/Matheuscara/speak-harness/actions/runs/38113001768"
+            >See the release checks <span aria-hidden="true">↗</span></a
+          >
+        </div>
+        <p class="proof-note">
+          CI installed the packages, rendered their windows and generated
+          speech. It did not test physical speakers.
+        </p>
+      </section>
+
+      <section
+        class="download-section"
+        id="download"
+        aria-labelledby="download-title"
+      >
+        <div class="section-wrap">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">05 / GIVE YOUR AGENTS A VOICE</p>
+              <h2 id="download-title">
+                Your next answer.<br /><span class="accent">Out loud.</span>
+              </h2>
+            </div>
+            <p>
+              Get the native desktop app.<br />Bun, Node.js and synthesis
+              libraries included.
+            </p>
+          </div>
+          <div class="download-grid">
+            <article class="download-card">
+              <span class="download-label">01 / WINDOWS</span>
+              <h3>Windows</h3>
+              <p>x64 · installer</p>
+              <a
+                class="button"
+                href="https://github.com/Matheuscara/speak-harness/releases/download/v0.2.0/SpeakHarness-Setup-0.2.0-x64.exe"
+                >Download .exe <span aria-hidden="true">↓</span></a
+              >
+              <p class="download-help">
+                Run the installer, then open SpeakHarness from Start.
+              </p>
+              <p class="install-warning">
+                Unsigned installer. SmartScreen may warn before opening.
+              </p>
+            </article>
+            <article class="download-card">
+              <span class="download-label">02 / MACOS</span>
+              <h3>macOS</h3>
+              <p>Apple Silicon &amp; Intel</p>
+              <a
+                class="button"
+                href="https://github.com/Matheuscara/speak-harness/releases/download/v0.2.0/SpeakHarness-0.2.0-mac-arm64.dmg"
+                >Apple Silicon .dmg <span aria-hidden="true">↓</span></a
+              ><a
+                class="secondary-download"
+                href="https://github.com/Matheuscara/speak-harness/releases/download/v0.2.0/SpeakHarness-0.2.0-mac-x64.dmg"
+                >Intel Mac .dmg <span aria-hidden="true">↓</span></a
+              >
+              <p class="download-help">Drag SpeakHarness into Applications.</p>
+              <p class="install-warning">
+                Ad-hoc signed, not notarized. Gatekeeper may require approval in
+                Privacy &amp; Security.
+              </p>
+            </article>
+            <article class="download-card">
+              <span class="download-label">03 / LINUX</span>
+              <h3>Linux</h3>
+              <p>glibc desktops · x64 &amp; ARM64</p>
+              <a
+                class="button"
+                href="https://github.com/Matheuscara/speak-harness/releases/download/v0.2.0/SpeakHarness-0.2.0-linux-x86_64.AppImage"
+                >x64 AppImage <span aria-hidden="true">↓</span></a
+              >
+              <div class="linux-links">
+                <a
+                  href="https://github.com/Matheuscara/speak-harness/releases/download/v0.2.0/SpeakHarness-0.2.0-linux-amd64.deb"
+                  >x64 .deb</a
+                ><a
+                  href="https://github.com/Matheuscara/speak-harness/releases/download/v0.2.0/SpeakHarness-0.2.0-linux-arm64.AppImage"
+                  >ARM64 AppImage</a
+                ><a
+                  href="https://github.com/Matheuscara/speak-harness/releases/download/v0.2.0/SpeakHarness-0.2.0-linux-arm64.deb"
+                  >ARM64 .deb</a
+                >
+              </div>
+              <p class="download-help">
+                Make the AppImage executable, or install the .deb. On NixOS, use
+                <code>appimage-run</code>.
+              </p>
+              <p class="install-warning">
+                Needs a graphical session and a working PipeWire, PulseAudio,
+                ALSA or ffplay player.
+              </p>
+            </article>
+          </div>
+          <div class="download-foot">
+            <span>v0.2.0 · Windows ARM64 and Alpine/musl are not packaged.</span
+            ><a
+              href="https://github.com/Matheuscara/speak-harness/releases/download/v0.2.0/SHA256SUMS-desktop.txt"
+              >Verify SHA256 checksums <span aria-hidden="true">↗</span></a
+            >
+          </div>
+          <p class="models-note">
+            First-run voice downloads: approximately <strong>305 MB</strong> for
+            Kokoro q4 + <strong>63 MB</strong> for Piper Faber. Cached locally
+            for next time.
+          </p>
+        </div>
+      </section>
+
+      <section class="section-wrap faq" aria-labelledby="faq-title">
+        <div>
+          <p class="eyebrow">06 / GOOD QUESTIONS</p>
+          <h2 id="faq-title">Before you<br />press Play.</h2>
+          <a
+            class="text-link"
+            href="https://github.com/Matheuscara/speak-harness/issues"
+            >Ask on GitHub <span aria-hidden="true">↗</span></a
+          >
+        </div>
+        <div class="faq-list">
+          <details>
+            <summary>
+              Does my code leave my computer?<span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              SpeakHarness reads local session files without writing to them.
+              Speech synthesis and language detection happen locally. Model
+              installation downloads files from upstream hosts; it does not
+              upload conversations. There is no SpeakHarness account or
+              telemetry service. Your coding agent has its own separate privacy
+              policy.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Do I have to restart my coding agent?<span aria-hidden="true"
+                >+</span
+              >
+            </summary>
+            <p>
+              No, not for transcript following. Open Sessions in SpeakHarness,
+              choose an existing supported conversation, then press Play. The
+              optional OMP extension requires restarting OMP once after
+              installing it.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Can I speak commands back to the agent?<span aria-hidden="true"
+                >+</span
+              >
+            </summary>
+            <p>
+              SpeakHarness is a listening companion, not a dictation app. It
+              reads answers; it does not record your microphone or approve
+              actions for you.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Is the browser required?<span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              No. The desktop app opens its own window and starts the local
+              service. A browser dashboard and terminal reader are optional
+              alternatives, available from source or the Nix CLI package. The
+              Nix flake does not install the Electron app.
+            </p>
+          </details>
+          <details>
+            <summary>
+              What about other agents and languages?<span aria-hidden="true"
+                >+</span
+              >
+            </summary>
+            <p>
+              Native transcript adapters cover OMP, Pi, Codex and Claude Code.
+              Other CLI tools can be launched through
+              <code>speakh run -- &lt;command&gt;</code> for terminal capture,
+              with less structured reading. Narration supports English and
+              Brazilian Portuguese; the app interface is English.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Is it open source?<span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              Yes. Original SpeakHarness code is MIT-licensed. The bundled
+              ephone phonemizer is GPL-3.0-or-later, so redistributing the
+              combined package must respect those terms. Voice models have their
+              own licenses. See the
+              <a
+                href="https://github.com/Matheuscara/speak-harness/blob/main/THIRD_PARTY_NOTICES"
+                >third-party notices</a
+              >.
+            </p>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer section-wrap">
+      <a class="brand" href="#"
+        ><img src="assets/icon.svg" width="32" height="32" alt="" /><span
+          >SPEAK<span class="accent">HARNESS</span></span
+        ></a
+      >
+      <p>
+        One answer at a time.<br /><span
+          >Built by Matheuscara. Local by design.</span
+        >
+      </p>
+      <nav aria-label="Footer navigation">
+        <a href="https://github.com/Matheuscara/speak-harness#readme"
+          >Documentation</a
+        ><a href="https://github.com/Matheuscara/speak-harness/releases"
+          >Releases</a
+        ><a href="https://github.com/Matheuscara/speak-harness/issues"
+          >Feedback</a
+        >
+      </nav>
+    </footer>
+    <dialog id="preview" aria-labelledby="preview-title">
+      <div class="preview-head">
+        <h2 id="preview-title">SpeakHarness preview</h2>
+        <button
+          type="button"
+          class="preview-close"
+          aria-label="Close screenshot"
+        >
+          Close <span aria-hidden="true">×</span>
+        </button>
+      </div>
+      <img id="preview-image" alt="" />
+    </dialog>
+  </body>
+</html>

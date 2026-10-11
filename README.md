@@ -39,7 +39,7 @@
 </p>
 
 <p align="center">
-  <a href="#quick-start">Install</a> · <a href="#how-it-compares">Compare</a> · <a href="#supported-harnesses">Supported agents</a> · <a href="#privacy-and-security">Privacy</a>
+  <a href="https://matheuscara.github.io/speak-harness/">Website</a> · <a href="#quick-start">Install</a> · <a href="#how-it-compares">Compare</a> · <a href="#supported-harnesses">Supported agents</a> · <a href="#privacy-and-security">Privacy</a>
 </p>
 
 ## Keep your eyes on the code
@@ -263,6 +263,8 @@ Audio remains local. On Linux/macOS, saved study phrases live in `~/.local/share
 SpeakHarness reads harness session files **without writing to them**. Synthesis, playback and language detection happen locally. The graphical UI binds only to `127.0.0.1`, uses a per-launch key and rejects foreign origins; its Markdown renderer does not execute raw HTML or load remote images. **Installing voice models** downloads those files from their upstream hosts; it does not upload your conversations. SpeakHarness has no hosted account or telemetry service.
 
 ## Status, contributing and license
+
+The public [website](https://matheuscara.github.io/speak-harness/) is a static landing page, not an online instance of the app. Its source is in `site/`; `.github/workflows/pages.yml` publishes it with the shared screenshots from `assets/` on changes to `main`. No domain purchase, frontend build or paid hosting is required.
 
 SpeakHarness is an early public release. The [native installer run](https://github.com/Matheuscara/speak-harness/actions/runs/38112663697) passed on **Windows x64, Linux x64/ARM64, and macOS Intel/Apple Silicon**: on each runner it built and installed the desktop app, loaded its window, synthesized English and pt-BR speech through the bundled Node worker, and exited cleanly. The Linux AppImage also opened locally on **NixOS x86_64** through `appimage-run`. Browser mode remains a secondary option and was exercised on **NixOS x86_64** and **Debian x64**. CI checks audio samples and rendering, **not audible playback through physical speakers**; signing/notarization also require maintainer credentials. Packages target glibc Linux desktops, not Alpine/musl; Windows ARM64 is not packaged. Transcript formats can change between harness versions. Please [open an issue](https://github.com/Matheuscara/speak-harness/issues) with a scrubbed sample if an adapter stops recognizing your sessions, or send a PR with a fixture and a behavioral test.
 
