@@ -10,8 +10,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Matheuscara/speak-harness/releases/latest"><img src="https://img.shields.io/badge/Download_desktop-e86b5c?style=for-the-badge&amp;labelColor=17100f" alt="Download SpeakHarness desktop"></a>
-  <a href="#quick-start"><img src="https://img.shields.io/badge/Windows_%C2%B7_Linux_%C2%B7_macOS-17100f?style=for-the-badge" alt="Install on Windows, Linux or macOS"></a>
+  <a href="https://github.com/Matheuscara/speak-harness/releases/latest"><img src="assets/download-desktop.svg" alt="Download SpeakHarness desktop" width="240" height="48"></a><br>
+  <sub><a href="#quick-start">Windows · Linux · macOS</a></sub>
 </p>
 
 <p align="center">
