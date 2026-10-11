@@ -23,9 +23,11 @@
     <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="motion.css" />
+    <link rel="stylesheet" href="demo.css" />
     <script src="vendor/gsap.min.js" defer></script>
     <script src="vendor/ScrollTrigger.min.js" defer></script>
     <script src="motion.js" defer></script>
+    <script src="demo.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -149,118 +151,186 @@
       <section class="section-wrap tour" id="tour" aria-labelledby="tour-title">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">FROM AGENT OUTPUT TO YOUR EARS</p>
+            <p class="eyebrow">FROM YOUR AGENT. TO YOUR EARS.</p>
             <h2 id="tour-title">
-              Three steps.<br /><span class="accent">Find your flow.</span>
+              Watch the handoff.<br /><span class="accent"
+                >Hear the answer.</span
+              >
             </h2>
           </div>
           <p>
-            An interactive walkthrough, not a live session.<br />Your files stay
-            on your computer.
+            A fictional Claude Code reply.<br />Real SpeakHarness voices. Press
+            play to listen.
           </p>
         </div>
-        <div class="tour-layout">
-          <div class="tour-steps" aria-label="Walkthrough steps">
-            <button type="button" data-step="0" aria-pressed="true">
-              <span>01</span>
-              <div>
-                <strong>Connect your conversation</strong
-                ><small>Choose the session you already have.</small>
-              </div>
-              <b aria-hidden="true">↗</b>
-            </button>
-            <button type="button" data-step="1" aria-pressed="false">
-              <span>02</span>
-              <div>
-                <strong>Hear the explanation</strong
-                ><small>Markdown becomes a listening script.</small>
-              </div>
-              <b aria-hidden="true">↗</b>
-            </button>
-            <button type="button" data-step="2" aria-pressed="false">
-              <span>03</span>
-              <div>
-                <strong>Make it your pace</strong
-                ><small>Replay. Slow down. Save the good parts.</small>
-              </div>
-              <b aria-hidden="true">↗</b>
-            </button>
-            <a class="text-link" href="#download"
-              >Ready? Get the desktop app <span aria-hidden="true">↓</span></a
+        <div class="demo-toolbar">
+          <div class="demo-languages" aria-label="Sample language">
+            <button
+              type="button"
+              data-demo-lang="en"
+              aria-pressed="true"
+              disabled
             >
+              English
+            </button>
+            <button
+              type="button"
+              data-demo-lang="pt"
+              aria-pressed="false"
+              disabled
+            >
+              Português
+            </button>
           </div>
-          <div class="tour-stage">
-            <div class="tour-stage-head">
-              <span class="status-dot" aria-hidden="true"></span> INTERACTIVE
-              WALKTHROUGH <span id="tour-count">01 / 03</span>
-            </div>
-            <div class="tour-panel" data-panel="0">
-              <p class="eyebrow">SESSIONS / EXAMPLE WORKSPACE</p>
-              <h3>Your agent is already working.</h3>
-              <div class="session-example">
-                <span class="session-icon">H</span>
-                <div>
-                  <strong>Review the authentication flow</strong
-                  ><small>OMP · example-project · local transcript</small>
-                </div>
-                <span class="status-dot" aria-hidden="true"></span>
-              </div>
-              <p>
-                In the app, open Sessions and pick a conversation. SpeakHarness
-                reads the transcript without changing it.
-              </p>
-              <span class="tour-pill">OMP · PI · CODEX · CLAUDE CODE</span>
-            </div>
-            <div class="tour-panel" data-panel="1" hidden>
-              <p class="eyebrow">MARKDOWN → LISTENING SCRIPT</p>
-              <h3>The answer, minus the noise.</h3>
-              <div class="script-example">
-                <code
-                  >## Authentication<br />Use the [session guide](…)<br />```typescript
-                  … ```</code
-                ><span aria-hidden="true">↓</span>
-                <blockquote>
-                  Authentication. Use the session guide.<br /><strong
-                    >TypeScript code block.</strong
-                  >
-                </blockquote>
-              </div>
-              <p>
-                Links are read by label. Code is announced, not recited. This is
-                a visual example; no audio plays automatically.
-              </p>
-            </div>
-            <div class="tour-panel" data-panel="2" hidden>
-              <p class="eyebrow">READING / YOUR PACE</p>
-              <h3>Stay with the thought.</h3>
-              <blockquote class="sentence-example">
-                The best answer is the one<br />you have time to understand.
-              </blockquote>
-              <div class="tour-controls">
-                <span>REPEAT</span><span>REPEAT SLOWER</span
-                ><span>SAVE SENTENCE</span>
-              </div>
-              <p>
-                In the desktop app, revisit a sentence or save a phrase. Enable
-                automatic reading when you want to follow new replies.
-              </p>
-              <a class="button" href="#download"
-                >Start listening <span aria-hidden="true">↓</span></a
-              >
-            </div>
-            <div class="tour-bottom">
-              <p id="tour-status" aria-live="polite">
-                Step 1 of 3: choose an existing session.
-              </p>
-              <button type="button" id="tour-next">Next step →</button>
-            </div>
-          </div>
+          <button class="demo-replay-flow" type="button" disabled>
+            Replay the handoff <span aria-hidden="true">↺</span>
+          </button>
         </div>
+        <div class="demo-flow">
+          <article
+            class="agent-terminal"
+            aria-label="Illustrative Claude Code terminal"
+          >
+            <div class="demo-window-head">
+              <span class="terminal-dots" aria-hidden="true"
+                ><i></i><i></i><i></i></span
+              ><span>CLAUDE CODE</span><span>EXAMPLE SESSION</span>
+            </div>
+            <div class="agent-intro">
+              <span class="agent-avatar" aria-hidden="true">&gt;_</span>
+              <div>
+                <strong>Claude Code</strong><small>~/example-project</small>
+              </div>
+            </div>
+            <div class="agent-prompt">
+              <span aria-hidden="true">❯</span>
+              <p id="demo-prompt">How should I handle a failed request?</p>
+            </div>
+            <div class="agent-reply">
+              <p class="reply-label">ASSISTANT / FINAL REPLY</p>
+              <h3 id="demo-heading">## Handle errors clearly</h3>
+              <p id="demo-raw">
+                The session is ready.<br /><br />Keep the validation on the
+                <strong>**server**</strong>, and show a clear error when the
+                request fails.<br /><br />You can keep reviewing the code while
+                I read the explanation.
+              </p>
+            </div>
+            <div class="terminal-foot">
+              <span class="status-dot" aria-hidden="true"></span> Final answer
+              in the local transcript
+            </div>
+          </article>
+          <div class="flow-connector" aria-hidden="true">
+            <span class="connector-label">TRANSCRIPT</span
+            ><svg viewBox="0 0 120 60">
+              <path class="connector-track" d="M4 30H110m-7-7 7 7-7 7" />
+              <path class="connector-signal" d="M4 30H110" /></svg
+            ><span class="transfer-packet">TEXT</span
+            ><span class="connector-caption">READ-ONLY</span>
+          </div>
+          <article class="demo-reader" aria-label="SpeakHarness audio preview">
+            <div class="demo-window-head">
+              <img src="assets/icon.svg" alt="" width="21" height="21" /><span
+                >SPEAKHARNESS</span
+              ><span>LISTENING DESK</span>
+            </div>
+            <div class="reader-body">
+              <div class="reader-label">
+                <span class="status-dot" aria-hidden="true"></span> LISTENING
+                SCRIPT <span id="demo-voice">EN / HEART · KOKORO</span>
+              </div>
+              <blockquote id="demo-transcript">
+                The session is ready. Keep the validation on the server, and
+                show a clear error when the request fails. You can keep
+                reviewing the code while I read the explanation.
+              </blockquote>
+              <div class="demo-waveform" aria-hidden="true">
+                <svg
+                  id="demo-wave"
+                  viewBox="0 0 432 60"
+                  preserveAspectRatio="none"
+                ></svg>
+              </div>
+              <audio
+                id="demo-audio"
+                controls
+                preload="none"
+                src="audio/en.mp3"
+                aria-label="English sample generated with Kokoro"
+              ></audio>
+              <div class="demo-player" hidden>
+                <div class="demo-player-buttons">
+                  <button id="demo-play" class="button" type="button">
+                    Hear the real voice
+                    <span aria-hidden="true">▶</span></button
+                  ><button
+                    id="demo-replay"
+                    type="button"
+                    aria-label="Replay audio from the beginning"
+                  >
+                    ↺</button
+                  ><label class="demo-speed"
+                    >Speed<select id="demo-speed" aria-label="Playback speed">
+                      <option value="0.8">0.8×</option>
+                      <option value="1" selected>1×</option>
+                      <option value="1.2">1.2×</option>
+                    </select></label
+                  >
+                </div>
+                <div class="demo-seek">
+                  <label class="sr-only" for="demo-position"
+                    >Audio position</label
+                  ><input
+                    id="demo-position"
+                    type="range"
+                    min="0"
+                    max="100"
+                    value="0"
+                    step="0.1"
+                  /><output id="demo-time" for="demo-position"
+                    >0:00 / 0:10</output
+                  >
+                </div>
+              </div>
+              <p id="demo-audio-status" class="demo-audio-status" role="status">
+                A real, pre-generated voice sample. Audio starts only when you
+                press Play.
+              </p>
+            </div>
+          </article>
+        </div>
+        <ol class="demo-stages" aria-label="How the handoff works">
+          <li data-demo-stage="0" aria-current="step">
+            <span>01</span><strong>The agent answers</strong
+            ><small>A final reply, not tool chatter.</small>
+          </li>
+          <li data-demo-stage="1">
+            <span>02</span><strong>SpeakHarness reads</strong
+            ><small>Local transcript → clean speech script.</small>
+          </li>
+          <li data-demo-stage="2">
+            <span>03</span><strong>You listen</strong
+            ><small>The text stays in view. Your pace.</small>
+          </li>
+        </ol>
+        <p class="demo-disclosure">
+          Illustrative walkthrough, not a live connection to Claude. Audio was
+          generated locally with SpeakHarness and is served here as a short
+          recording; the website does not run the speech model. Claude Code is
+          an Anthropic product; SpeakHarness is independent.
+        </p>
+        <p class="demo-disclosure">
+          Open a sample directly:
+          <a href="audio/en.mp3">English / Kokoro Heart</a> ·
+          <a href="audio/pt.mp3">Português / Piper Faber</a>. The waveform shows
+          the recording's measured amplitude; the progress follows audio
+          playback, not a simulated timer.
+        </p>
         <noscript
           ><p>
-            Enable JavaScript for the interactive tour. The steps are simple:
-            choose a session, press Play, then use Repeat or Repeat slower in
-            the desktop app.
+            The English sample above works without JavaScript.
+            <a href="audio/pt.mp3">Listen to the Portuguese Piper sample</a>.
           </p></noscript
         >
       </section>

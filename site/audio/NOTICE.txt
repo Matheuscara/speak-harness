@@ -1,0 +1,17 @@
+SpeakHarness website voice examples
+
+Generated locally through SpeakHarness's createEngineClient().synthesize() and
+encodeWav(), with speed 1.0. The example text was authored for this website;
+no Claude session, customer data, microphone recording or voice clone was used.
+
+English: kokoro:af_heart, Kokoro-82M-v1.0-ONNX (q4), 24 kHz PCM.
+Portuguese: piper:pt_BR-faber-medium, 22.05 kHz PCM.
+MP3 delivery encoding: libmp3lame, 96 kbit/s, no changes to voice or timing.
+Text, voice IDs, original PCM duration and 72 measured RMS waveform bins are
+recorded in samples.json. Encoder padding may slightly change MP3 duration;
+the web player uses the media element's actual duration after metadata loads.
+
+Model sources and license references:
+https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX
+https://huggingface.co/rhasspy/piper-voices/tree/main/pt/pt_BR/faber/medium
+See the repository's THIRD_PARTY_NOTICES for model and software license notes.

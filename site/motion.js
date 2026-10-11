@@ -4,65 +4,17 @@ const motionButton = document.querySelector(".motion-toggle");
 let motionPaused = false;
 let motionContext;
 let introPlayed = false;
-let tourAnimation;
-const steps = [...document.querySelectorAll("[data-step]")];
-const panels = [...document.querySelectorAll("[data-panel]")];
-let currentStep = 0;
-const tourLabels = [
-  "choose an existing session.",
-  "listen to the explanation.",
-  "replay, slow down or save.",
-];
-
-function selectStep(index) {
-  currentStep = index;
-  tourAnimation?.kill();
-  steps.forEach((step, i) =>
-    step.setAttribute("aria-pressed", String(i === index)),
-  );
-  panels.forEach((panel, i) => {
-    panel.hidden = i !== index;
-    panel.style.removeProperty("transform");
-    panel.style.removeProperty("opacity");
-  });
-  document.querySelector("#tour-count").textContent = `0${index + 1} / 03`;
-  document.querySelector("#tour-status").textContent =
-    `Step ${index + 1} of 3: ${tourLabels[index]}`;
-  document.querySelector("#tour-next").textContent =
-    index === 2 ? "Start again ↺" : "Next step →";
-  if (window.gsap && !reduceMotion.matches && !motionPaused) {
-    tourAnimation = gsap.fromTo(
-      panels[index],
-      { opacity: 0, y: 18 },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.45,
-        ease: "power2.out",
-        clearProps: "transform,opacity",
-      },
-    );
-  }
-  window.ScrollTrigger?.refresh();
-}
-steps.forEach((step, i) => step.addEventListener("click", () => selectStep(i)));
-document
-  .querySelector("#tour-next")
-  .addEventListener("click", () =>
-    selectStep((currentStep + 1) % steps.length),
-  );
 
 function configureMotion() {
   motionContext?.revert();
-  tourAnimation?.kill();
-  panels.forEach((panel) => {
-    panel.style.removeProperty("transform");
-    panel.style.removeProperty("opacity");
-  });
   document.querySelector(".entrance").style.display = "none";
   const enabled = !reduceMotion.matches && !motionPaused;
   motionButton.textContent = enabled ? "Pause motion" : "Motion off";
   motionButton.setAttribute("aria-pressed", String(!enabled));
+  document.documentElement.dataset.motion = enabled ? "on" : "off";
+  document.dispatchEvent(
+    new CustomEvent("speakh-motion", { detail: { enabled } }),
+  );
   if (!enabled || !window.gsap || !window.ScrollTrigger) return;
   gsap.registerPlugin(ScrollTrigger);
   motionContext = gsap.context(() => {
@@ -165,17 +117,15 @@ function configureMotion() {
       ".settings-preview",
       ".proof-strip",
     ]) {
-      gsap.utils
-        .toArray(selector)
-        .forEach((node) =>
-          gsap.from(node, {
-            y: 38,
-            opacity: 0,
-            duration: 0.8,
-            ease: "power2.out",
-            scrollTrigger: { trigger: node, start: "top 92%", once: true },
-          }),
-        );
+      gsap.utils.toArray(selector).forEach((node) =>
+        gsap.from(node, {
+          y: 38,
+          opacity: 0,
+          duration: 0.8,
+          ease: "power2.out",
+          scrollTrigger: { trigger: node, start: "top 92%", once: true },
+        }),
+      );
     }
     gsap.from(".bar", {
       scaleX: 0,
