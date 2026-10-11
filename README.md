@@ -1,55 +1,95 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="SpeakHarness — local voice for coding agents" width="900">
+  <img src="assets/logo.svg" alt="SpeakHarness — local voice for coding agents" width="420">
 </p>
 
-<h1 align="center">Your coding agents write. SpeakHarness speaks.</h1>
+<h1 align="center">Less scrolling. More listening.</h1>
 
 <p align="center">
-  A local voice companion for <strong>OMP, Pi, Codex and Claude Code</strong>.<br>
-  Listen to their Markdown answers in English and Brazilian Portuguese in the native desktop app.<br>
-  A browser dashboard and terminal UI remain available when you need them.
+  Your coding agents write. <strong>SpeakHarness speaks.</strong><br>
+  A native desktop listening desk for OMP, Pi, Codex and Claude Code.
 </p>
 
 <p align="center">
+  <a href="https://github.com/Matheuscara/speak-harness/releases/latest"><img src="https://img.shields.io/badge/Download_desktop-e86b5c?style=for-the-badge&amp;labelColor=17100f" alt="Download SpeakHarness desktop"></a>
+  <a href="#quick-start"><img src="https://img.shields.io/badge/Windows_%C2%B7_Linux_%C2%B7_macOS-17100f?style=for-the-badge" alt="Install on Windows, Linux or macOS"></a>
+</p>
+
+<p align="center">
+  <strong>Local speech. No TTS account. No per-word bill.</strong><br>
+  <sub>English + Brazilian Portuguese · Browser and terminal modes are optional.</sub>
+</p>
+
+<p align="center">
+  <img src="assets/dashboard-en.webp" alt="SpeakHarness listening desk: selected OMP session, spoken sentence, playback controls and answer history" width="1000">
+</p>
+<p align="center"><sub>The real listening UI, with a fictional conversation. No personal transcript data.</sub></p>
+
+<table align="center">
+  <tr>
+    <td align="center"><strong>4 harnesses</strong><br><sub>OMP · Pi · Codex · Claude Code</sub></td>
+    <td align="center"><strong>5 desktop targets</strong><br><sub>Native OS/CPU builds verified in CI</sub></td>
+    <td align="center"><strong>2 voice languages</strong><br><sub>English + pt-BR, switched per paragraph</sub></td>
+    <td align="center"><strong>On your machine</strong><br><sub>Kokoro + Piper synthesis</sub></td>
+  </tr>
+</table>
+
+<p align="center">
+  <a href="https://github.com/Matheuscara/speak-harness/actions/workflows/desktop.yml"><img src="https://github.com/Matheuscara/speak-harness/actions/workflows/desktop.yml/badge.svg?branch=main" alt="Desktop installer checks"></a>
   <a href="https://github.com/Matheuscara/speak-harness/actions/workflows/ci.yml"><img src="https://github.com/Matheuscara/speak-harness/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
-  <a href="https://github.com/Matheuscara/speak-harness/actions/workflows/desktop.yml"><img src="https://github.com/Matheuscara/speak-harness/actions/workflows/desktop.yml/badge.svg?branch=main" alt="Desktop installers status"></a>
-  <a href="https://github.com/Matheuscara/speak-harness/stargazers"><img src="https://img.shields.io/github/stars/Matheuscara/speak-harness?style=flat-square" alt="GitHub stars"></a>
-  <a href="https://github.com/Matheuscara/speak-harness/issues"><img src="https://img.shields.io/badge/issues-welcome-e86b5c?style=flat-square" alt="Issues welcome"></a>
-  <img src="https://img.shields.io/badge/audio-local-17100f?style=flat-square" alt="Local audio">
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick start</a> · <a href="#what-it-does">Features</a> · <a href="#supported-harnesses">Harnesses</a> · <a href="#controls">Controls</a> · <a href="#privacy-and-security">Privacy</a>
+  <a href="#quick-start">Install</a> · <a href="#how-it-compares">Compare</a> · <a href="#supported-harnesses">Supported agents</a> · <a href="#privacy-and-security">Privacy</a>
 </p>
 
----
+## Keep your eyes on the code
 
-<p align="center">
-  <img src="assets/dashboard-en.webp" alt="SpeakHarness listening page with a fictional OMP conversation, playback controls and answer history" width="1100">
-</p>
-<p align="center"><sub>The listening desk in the desktop app; the same local dashboard is also available in a browser. Fictional conversation; no personal transcript data.</sub></p>
+<table>
+  <tr>
+    <td width="33%" valign="top"><strong>Follow the answer</strong><br><br>Pick an existing session. Hear new replies without copying text or restarting your agent.</td>
+    <td width="33%" valign="top"><strong>Skip the syntax</strong><br><br>Hear the explanation, not Markdown noise. Code blocks are announced, not recited.</td>
+    <td width="33%" valign="top"><strong>Stay with the idea</strong><br><br>Replay a sentence, slow it down, or save a phrase. Read and listen together.</td>
+  </tr>
+</table>
 
-## Why SpeakHarness?
+<p align="center"><strong>Open the app → Choose a session → Press Play</strong><br><sub>Enable “Read new answers automatically” when you want hands-free playback.</sub></p>
 
-Coding agents return long answers full of headings, links, tables and code. Sending that raw Markdown straight to a text-to-speech engine is exhausting to listen to. SpeakHarness turns the answer into a **speech script**, follows the original conversation, and lets you listen while you read or work.
+<details>
+<summary>What the numbers mean — verification and limits</summary>
 
-- **Hear the answer, not the formatting.** It strips Markdown syntax, reads links by label and **announces code blocks instead of reciting code**.
-- **Switch languages automatically.** English goes to local Kokoro; Brazilian Portuguese goes to local Piper. Detection runs per paragraph, not once for the entire answer.
-- **Stay in your workflow.** Follow an already-open OMP, Pi, Codex or Claude Code session by reading its local transcript; no need to restart the harness.
-- **Study by listening.** Repeat a sentence, slow it down, pause for shadowing and save useful phrases.
-- **Start with the desktop app.** Open the native window on Windows, Linux or macOS; use the browser dashboard, OpenTUI reader, headless follower or one-shot file reader when they fit your workflow better.
+The v0.2.0 [release build](https://github.com/Matheuscara/speak-harness/actions/runs/38113001768) installed the desktop package, loaded its window and synthesized English and pt-BR speech on **Windows x64, Linux x64/ARM64 and macOS Intel/Apple Silicon**. It did not test physical speakers. The four adapters read each harness's native transcript format; other CLIs need the terminal-capture fallback.
 
-The interface, controls and documentation are in English. This does not change the language of your transcripts: pt-BR text is still spoken in Portuguese.
+The interface and documentation are in English. Narration switches between English and pt-BR per paragraph. Models download once, then speech runs locally. These are capability counts, not a performance ranking.
 
-**Verified scope in v0.2.0:** **4** native coding-harness adapters · **5** native desktop OS/CPU targets · **2** locally synthesized languages with per-paragraph switching · **3** reading surfaces (desktop, browser, terminal). The [release build](https://github.com/Matheuscara/speak-harness/actions/runs/38113001768) installed the desktop package, loaded its window and synthesized English and pt-BR speech on all five targets; it did not test physical speakers.
+</details>
 
 ## Quick start
 
 ### Desktop installers (no Bun or Node.js setup)
 
-Download the installer for your CPU and operating system from [GitHub Releases](https://github.com/Matheuscara/speak-harness/releases/latest): **Windows x64** (`SpeakHarness-Setup-*.exe`), **Linux x64/ARM64** (`.deb` for Debian/Ubuntu or `.AppImage` for other glibc desktops), or **macOS Apple Silicon/Intel** (`.dmg`). On Windows, run the installer and launch SpeakHarness from Start; on macOS, drag SpeakHarness into Applications; on Linux, install the `.deb` or make the AppImage executable and run it. **This native window is the primary graphical app.** It starts a loopback-only service using bundled Bun, Node.js and synthesis libraries; no runtime installation is needed. The browser displays the same dashboard but is an optional, separate way to access it.
+**Download, install, open.** Bun, Node.js and synthesis libraries are bundled. No terminal setup is needed on standard Windows, macOS or glibc Linux desktops.
 
-The installers are built on each native CPU/OS runner. The [desktop build workflow](https://github.com/Matheuscara/speak-harness/actions/workflows/desktop.yml) installs each package, renders its dashboard window, and synthesizes English and pt-BR speech locally before attaching it to a release. Each release includes `SHA256SUMS-desktop.txt` for checking downloaded packages. The first use downloads voice models (approximately **305 MB for Kokoro q4** and **63 MB for Piper Faber**) into your user cache; your transcripts remain local. Windows installers are **unsigned** (SmartScreen may warn); macOS apps have an **ad-hoc signature but are not notarized** (Gatekeeper may require opening the app explicitly in Privacy & Security). Linux needs a graphical session and a working system audio player (PipeWire, PulseAudio, ALSA or ffplay); the desktop package does not configure your speakers.
+| Your computer | Download v0.2.0 | Open it |
+| --- | --- | --- |
+| **Windows x64** | [Installer `.exe`](https://github.com/Matheuscara/speak-harness/releases/download/v0.2.0/SpeakHarness-Setup-0.2.0-x64.exe) | Run the installer, then launch from Start |
+| **Linux x64** | [AppImage](https://github.com/Matheuscara/speak-harness/releases/download/v0.2.0/SpeakHarness-0.2.0-linux-x86_64.AppImage) · [Debian/Ubuntu `.deb`](https://github.com/Matheuscara/speak-harness/releases/download/v0.2.0/SpeakHarness-0.2.0-linux-amd64.deb) | Make the AppImage executable, or install the `.deb` |
+| **Linux ARM64** | [AppImage](https://github.com/Matheuscara/speak-harness/releases/download/v0.2.0/SpeakHarness-0.2.0-linux-arm64.AppImage) · [Debian/Ubuntu `.deb`](https://github.com/Matheuscara/speak-harness/releases/download/v0.2.0/SpeakHarness-0.2.0-linux-arm64.deb) | Same steps, using the ARM64 build |
+| **Mac — Apple Silicon** | [Disk image `.dmg`](https://github.com/Matheuscara/speak-harness/releases/download/v0.2.0/SpeakHarness-0.2.0-mac-arm64.dmg) | Drag SpeakHarness into Applications |
+| **Mac — Intel** | [Disk image `.dmg`](https://github.com/Matheuscara/speak-harness/releases/download/v0.2.0/SpeakHarness-0.2.0-mac-x64.dmg) | Drag SpeakHarness into Applications |
+
+> **Before opening:** Windows may show SmartScreen; macOS may require approval in **Privacy & Security**. Windows builds are unsigned; macOS builds are ad-hoc signed, not notarized.
+
+<details>
+<summary>First-run downloads, audio requirements and checksums</summary>
+
+Voice models download once: approximately **305 MB for Kokoro q4** and **63 MB for Piper Faber**. Your transcripts remain local. Linux needs a graphical session and a working PipeWire, PulseAudio, ALSA or ffplay player; the app does not configure your speakers.
+
+The [desktop workflow](https://github.com/Matheuscara/speak-harness/actions/workflows/desktop.yml) checks the installed package, window and synthesized speech. [SHA256 checksums](https://github.com/Matheuscara/speak-harness/releases/download/v0.2.0/SHA256SUMS-desktop.txt) accompany the installers.
+
+</details>
+
+<details>
+<summary>NixOS: open the native AppImage</summary>
 
 On **NixOS**, run the Linux AppImage with `appimage-run` (the foreign Linux binaries need its FHS environment). For example, after downloading the x64 asset into Downloads:
 
@@ -60,6 +100,11 @@ appimage-run ~/Downloads/SpeakHarness-0.2.0-linux-x86_64.AppImage
 ```
 
 Use the `arm64` AppImage on ARM64 machines. The native window opens directly; you do not need to run `speakh web` first.
+
+</details>
+
+<details>
+<summary>Optional: Nix CLI, browser mode and running from source</summary>
 
 ### Nix CLI and browser mode (optional)
 
@@ -85,9 +130,14 @@ bun src/cli/main.ts web  # optional browser dashboard
 
 On NixOS, use the Nix CLI installation above rather than running the source directly: it supplies Bun, Node.js and the native library paths needed by ONNX Runtime. The initial downloads are approximately **305 MB for Kokoro q4** and **63 MB for Piper Faber**. Models are cached locally. **Settings → Voices** in the desktop app (or browser dashboard) groups English and Brazilian Portuguese voices: preview installed voices, install missing models, then choose the voice for that language.
 
+</details>
+
 ### Already running a harness?
 
 Open the dashboard, go to **Sessions** and choose a conversation. **All** folders are shown by default; use **This folder** to narrow the list to the current project. Turn on **Read new answers automatically** under **Settings → Reading** if you want hands-free playback; it is off by default.
+
+<details>
+<summary>Optional: hear OMP replies without opening a window</summary>
 
 ### Hear Oh My Pi replies without opening the dashboard
 
@@ -99,6 +149,8 @@ speakh daemon
 ```
 
 `speakh daemon` is the audio owner when no SpeakHarness interface is open. If `speakh web`, the desktop app or the TUI is already running, keep that one instance instead of starting a second audio owner. The extension sends only final assistant text over a local user-owned Unix socket (or a per-user named pipe on Windows); thinking, tool output and subagent replies are not spoken. A missing SpeakHarness instance never blocks the chat. Remove `~/.omp/agent/extensions/speak-harness.js` to uninstall the integration.
+
+</details>
 
 ## What it does
 
