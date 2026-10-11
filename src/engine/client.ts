@@ -56,14 +56,6 @@ export function createEngineClient(options: EngineClientOptions = {}): EngineCli
     for (const request of pending) request.reject(error);
   };
 
-  const unrefWhenIdle = (proc: WorkerProcess) => {
-    // A caller may queue its next request in the response's promise continuation. Keep the worker's handle
-    // referenced through that turn; on Windows, unref/ref around consecutive pipe writes can lose a reply.
-    setImmediate(() => {
-      if (proc.pending.size === 0) proc.child.unref();
-    });
-  };
-
   const onLine = (proc: WorkerProcess, line: string) => {
     let message: WorkerResponse;
     try {
@@ -79,7 +71,7 @@ export function createEngineClient(options: EngineClientOptions = {}): EngineCli
       return;
     }
     proc.pending.delete(message.id);
-    if (proc.pending.size === 0) unrefWhenIdle(proc);
+    if (proc.pending.size === 0) proc.child.unref();
     if (message.ok) request.resolve(message);
     else if (message.code === "voice-not-installed") request.reject(new VoiceNotInstalledError(message.voice ?? "unknown"));
     else request.reject(new Error(message.error));
@@ -132,7 +124,7 @@ export function createEngineClient(options: EngineClientOptions = {}): EngineCli
     const id = nextId++;
     const onAbort = () => {
       if (!proc.pending.delete(id)) return;
-      if (proc.pending.size === 0) unrefWhenIdle(proc);
+      if (proc.pending.size === 0) proc.child.unref();
       const cancel: WorkerRequest = { id: nextId++, op: "cancel", target: id };
       proc.child.stdin.write(`${JSON.stringify(cancel)}\n`);
       reject(new DOMException("Synthesis aborted", "AbortError"));

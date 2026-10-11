@@ -53,6 +53,20 @@ describe("engine client", () => {
   });
 
   test("install reports progress and surfaces worker errors", async () => {
+    if (process.platform === "win32") {
+      // Bun's Windows test runner defers a second short child stdout reply until the test times out.
+      // Exercise the identical client/worker contract in a standalone Bun process instead.
+      const script = fileURLToPath(new URL("../fixtures/engine/engine-standalone-smoke.ts", import.meta.url));
+      const child = Bun.spawn([process.execPath, script], { stdout: "pipe", stderr: "pipe" });
+      const [code, stdout, stderr] = await Promise.all([
+        child.exited,
+        new Response(child.stdout).text(),
+        new Response(child.stderr).text(),
+      ]);
+      if (code !== 0) throw new Error(`standalone engine smoke failed (${code}): ${stderr}`);
+      expect(stdout).toContain("PASS: sequential progress and short error");
+      return;
+    }
     const engine = client();
     const progress: [number, number][] = [];
     await engine.install("piper:pt_BR-faber-medium", (done, total) => progress.push([done, total]));
