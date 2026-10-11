@@ -31,7 +31,7 @@ jobs:
       - name: Assemble static site
         run: |
           mkdir -p _site/assets
-          cp site/index.html site/style.css site/app.js _site/
+          cp -R site/. _site/
           cp assets/icon.svg assets/dashboard-en.webp assets/settings-en.webp _site/assets/
           touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v3

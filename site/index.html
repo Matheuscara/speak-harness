@@ -22,10 +22,25 @@
     <title>SpeakHarness — Your coding agents write. SpeakHarness speaks.</title>
     <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="motion.css" />
+    <script src="vendor/gsap.min.js" defer></script>
+    <script src="vendor/ScrollTrigger.min.js" defer></script>
+    <script src="motion.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
+    <div class="entrance" aria-hidden="true">
+      <div class="entrance-brand">
+        <img src="assets/icon.svg" alt="" width="90" height="90" /><span
+          >LESS SCROLLING.</span
+        ><strong>MORE LISTENING.</strong>
+        <div class="entrance-line"></div>
+      </div>
+    </div>
+    <button class="motion-toggle" type="button" hidden aria-pressed="false">
+      Pause motion
+    </button>
     <header class="header">
       <a class="brand" href="#" aria-label="SpeakHarness home"
         ><img src="assets/icon.svg" width="36" height="36" alt="" /><span
@@ -45,13 +60,17 @@
 
     <main id="main">
       <section class="hero section-wrap" aria-labelledby="hero-title">
+        <div class="hero-grid" aria-hidden="true"></div>
         <div class="hero-copy">
           <p class="eyebrow">
             <span class="status-dot" aria-hidden="true"></span> Local voice for
             coding agents <span class="version">v0.2.0</span>
           </p>
           <h1 id="hero-title">
-            READ WITH<br />YOUR <span class="accent">EARS.</span>
+            <span class="headline-line">READ WITH</span
+            ><span class="headline-line"
+              >YOUR <span class="accent">EARS.</span></span
+            >
           </h1>
           <p class="hero-lead">
             Your coding agents write.<br /><strong>SpeakHarness speaks.</strong>
@@ -63,8 +82,8 @@
           <div class="hero-actions">
             <a class="button" href="#download"
               >Download desktop <span aria-hidden="true">↓</span></a
-            ><a class="text-link" href="#experience"
-              >See how it works <span aria-hidden="true">↗</span></a
+            ><a class="text-link" href="#tour"
+              >Take the interactive tour <span aria-hidden="true">↗</span></a
             >
           </div>
           <p class="hero-note">
@@ -74,6 +93,9 @@
           </p>
         </div>
         <div class="hero-product">
+          <div class="signal-orbit" aria-hidden="true">
+            <i></i><i></i><span>VOICE / LOCAL</span>
+          </div>
           <div class="product-label">
             <span>01 / YOUR LISTENING DESK</span
             ><span
@@ -123,6 +145,125 @@
         <span>ALREADY IN YOUR WORKFLOW</span><strong>Oh My Pi</strong
         ><strong>Pi</strong><strong>Codex</strong><strong>Claude Code</strong>
       </div>
+
+      <section class="section-wrap tour" id="tour" aria-labelledby="tour-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">FROM AGENT OUTPUT TO YOUR EARS</p>
+            <h2 id="tour-title">
+              Three steps.<br /><span class="accent">Find your flow.</span>
+            </h2>
+          </div>
+          <p>
+            An interactive walkthrough, not a live session.<br />Your files stay
+            on your computer.
+          </p>
+        </div>
+        <div class="tour-layout">
+          <div class="tour-steps" aria-label="Walkthrough steps">
+            <button type="button" data-step="0" aria-pressed="true">
+              <span>01</span>
+              <div>
+                <strong>Connect your conversation</strong
+                ><small>Choose the session you already have.</small>
+              </div>
+              <b aria-hidden="true">↗</b>
+            </button>
+            <button type="button" data-step="1" aria-pressed="false">
+              <span>02</span>
+              <div>
+                <strong>Hear the explanation</strong
+                ><small>Markdown becomes a listening script.</small>
+              </div>
+              <b aria-hidden="true">↗</b>
+            </button>
+            <button type="button" data-step="2" aria-pressed="false">
+              <span>03</span>
+              <div>
+                <strong>Make it your pace</strong
+                ><small>Replay. Slow down. Save the good parts.</small>
+              </div>
+              <b aria-hidden="true">↗</b>
+            </button>
+            <a class="text-link" href="#download"
+              >Ready? Get the desktop app <span aria-hidden="true">↓</span></a
+            >
+          </div>
+          <div class="tour-stage">
+            <div class="tour-stage-head">
+              <span class="status-dot" aria-hidden="true"></span> INTERACTIVE
+              WALKTHROUGH <span id="tour-count">01 / 03</span>
+            </div>
+            <div class="tour-panel" data-panel="0">
+              <p class="eyebrow">SESSIONS / EXAMPLE WORKSPACE</p>
+              <h3>Your agent is already working.</h3>
+              <div class="session-example">
+                <span class="session-icon">H</span>
+                <div>
+                  <strong>Review the authentication flow</strong
+                  ><small>OMP · example-project · local transcript</small>
+                </div>
+                <span class="status-dot" aria-hidden="true"></span>
+              </div>
+              <p>
+                In the app, open Sessions and pick a conversation. SpeakHarness
+                reads the transcript without changing it.
+              </p>
+              <span class="tour-pill">OMP · PI · CODEX · CLAUDE CODE</span>
+            </div>
+            <div class="tour-panel" data-panel="1" hidden>
+              <p class="eyebrow">MARKDOWN → LISTENING SCRIPT</p>
+              <h3>The answer, minus the noise.</h3>
+              <div class="script-example">
+                <code
+                  >## Authentication<br />Use the [session guide](…)<br />```typescript
+                  … ```</code
+                ><span aria-hidden="true">↓</span>
+                <blockquote>
+                  Authentication. Use the session guide.<br /><strong
+                    >TypeScript code block.</strong
+                  >
+                </blockquote>
+              </div>
+              <p>
+                Links are read by label. Code is announced, not recited. This is
+                a visual example; no audio plays automatically.
+              </p>
+            </div>
+            <div class="tour-panel" data-panel="2" hidden>
+              <p class="eyebrow">READING / YOUR PACE</p>
+              <h3>Stay with the thought.</h3>
+              <blockquote class="sentence-example">
+                The best answer is the one<br />you have time to understand.
+              </blockquote>
+              <div class="tour-controls">
+                <span>REPEAT</span><span>REPEAT SLOWER</span
+                ><span>SAVE SENTENCE</span>
+              </div>
+              <p>
+                In the desktop app, revisit a sentence or save a phrase. Enable
+                automatic reading when you want to follow new replies.
+              </p>
+              <a class="button" href="#download"
+                >Start listening <span aria-hidden="true">↓</span></a
+              >
+            </div>
+            <div class="tour-bottom">
+              <p id="tour-status" aria-live="polite">
+                Step 1 of 3: choose an existing session.
+              </p>
+              <button type="button" id="tour-next">Next step →</button>
+            </div>
+          </div>
+        </div>
+        <noscript
+          ><p>
+            Enable JavaScript for the interactive tour. The steps are simple:
+            choose a session, press Play, then use Repeat or Repeat slower in
+            the desktop app.
+          </p></noscript
+        >
+      </section>
 
       <section
         class="section-wrap experience"

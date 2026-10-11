@@ -1,0 +1,424 @@
+/* Motion is progressive enhancement: no hidden content before the runtime loads. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 25;
+  opacity: 0.075;
+  background-image: url("grain.svg");
+  background-size: 180px 180px;
+}
+.hero {
+  isolation: isolate;
+  overflow: clip;
+}
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(#e86b5c09 1px, transparent 1px),
+    linear-gradient(90deg, #e86b5c09 1px, transparent 1px),
+    radial-gradient(ellipse at 85% 35%, #b7483238, transparent 60%);
+  background-size:
+    64px 64px,
+    64px 64px,
+    100% 100%;
+  mask-image: linear-gradient(90deg, transparent, #000);
+}
+.headline-line {
+  display: block;
+  transform-origin: left bottom;
+}
+.hero-product {
+  position: relative;
+  perspective: 1200px;
+}
+.product-window {
+  transform-style: preserve-3d;
+  transform-origin: center;
+  will-change: transform;
+}
+.signal-orbit {
+  position: absolute;
+  width: 540px;
+  height: 540px;
+  max-width: 110%;
+  left: 0;
+  top: -40px;
+  z-index: -1;
+  border: 1px solid #e86b5c35;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.signal-orbit i {
+  position: absolute;
+  inset: 20px;
+  border: 1px dashed #e86b5c28;
+  border-radius: 50%;
+  transform: rotateX(55deg) rotateZ(-25deg);
+}
+.signal-orbit i + i {
+  inset: 50px;
+  transform: rotateY(60deg) rotateZ(30deg);
+}
+.signal-orbit > span {
+  position: absolute;
+  top: 25px;
+  right: 35px;
+  font: 9px var(--mono);
+  letter-spacing: 0.2em;
+  color: var(--coral);
+  background: var(--bg);
+  padding: 6px;
+}
+.signal-orbit::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--coral);
+  box-shadow: 0 0 24px var(--coral);
+}
+.entrance {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  place-items: center;
+  background: #100e0df5;
+  background-image: linear-gradient(#100e0ded, #100e0ded), url("grain.svg");
+  text-align: center;
+}
+.entrance-brand {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+}
+.entrance-brand span {
+  font: 12px var(--mono);
+  letter-spacing: 0.25em;
+  color: var(--muted);
+}
+.entrance-brand strong {
+  font-size: clamp(30px, 6vw, 78px);
+  letter-spacing: -0.05em;
+  color: var(--coral);
+  line-height: 1;
+}
+.entrance-line {
+  height: 2px;
+  width: 170px;
+  background: var(--coral);
+  transform-origin: left;
+}
+.motion-toggle {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 45;
+  background: #1c1411ed;
+  border: 1px solid #9e6553;
+  color: var(--ink);
+  padding: 9px 14px;
+  border-radius: 30px;
+  cursor: pointer;
+  font: 10px var(--mono);
+  box-shadow: 0 4px 20px #0005;
+}
+.motion-toggle[hidden] {
+  display: none;
+}
+.button {
+  transition:
+    box-shadow 0.2s,
+    background 0.2s;
+}
+.button:hover {
+  box-shadow: 0 0 30px #ee796732;
+}
+.feature-card {
+  position: relative;
+}
+.feature-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    260px circle at var(--mx, 50%) var(--my, 50%),
+    #ed785320,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.feature-card:hover::before {
+  opacity: 1;
+}
+.tour {
+  padding-block: 90px;
+  border-bottom: 1px solid var(--line);
+}
+.tour-layout {
+  display: grid;
+  grid-template-columns: 0.85fr 1.2fr;
+  gap: 48px;
+  align-items: center;
+}
+.tour-steps {
+  display: grid;
+  gap: 12px;
+}
+.tour-steps > button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: #171311;
+  border-radius: 6px;
+  padding: 22px;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.tour-steps > button[aria-pressed="true"] {
+  background: linear-gradient(110deg, #63312270, #171311);
+  border-color: var(--coral);
+  color: var(--ink);
+}
+.tour-steps > button > span {
+  font: 12px var(--mono);
+  color: var(--coral);
+}
+.tour-steps strong {
+  display: block;
+  font-size: 15px;
+}
+.tour-steps small {
+  display: block;
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.tour-steps b {
+  margin-left: auto;
+  color: var(--coral);
+}
+.tour-steps > .text-link {
+  justify-self: start;
+  margin-top: 20px;
+}
+.tour-stage {
+  border: 1px solid #825344;
+  background:
+    radial-gradient(ellipse at top right, #562a203d, transparent 60%), #14100e;
+  border-radius: 10px;
+  box-shadow: 0 25px 80px #0004;
+  overflow: hidden;
+}
+.tour-stage-head {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
+  font: 9px var(--mono);
+  color: var(--muted);
+}
+.tour-stage-head > span:last-child {
+  float: right;
+  color: var(--coral);
+}
+.tour-panel {
+  padding: 30px;
+  min-height: 330px;
+}
+.tour-panel[hidden] {
+  display: none;
+}
+.tour-panel h3 {
+  font-size: 29px;
+  margin-bottom: 24px;
+}
+.tour-panel > p:not(.eyebrow) {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.9;
+}
+.session-example {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid #725647;
+  background: #211815;
+  border-radius: 5px;
+  padding: 18px;
+  margin-bottom: 25px;
+}
+.session-example strong {
+  font-size: 13px;
+  display: block;
+}
+.session-example small {
+  font: 9px var(--mono);
+  color: var(--muted);
+}
+.session-icon {
+  font-weight: 900;
+  color: var(--coral);
+  border: 1px solid var(--coral);
+  padding: 3px 8px;
+}
+.session-example > .status-dot {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.tour-pill {
+  font: 9px var(--mono);
+  color: var(--mint);
+}
+.tour-bottom {
+  border-top: 1px solid var(--line);
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+.tour-bottom p {
+  font: 10px var(--mono);
+  color: var(--muted);
+  margin: 0;
+}
+.tour-bottom button {
+  border: 0;
+  background: none;
+  color: var(--coral);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.script-example {
+  display: grid;
+  grid-template-columns: 1fr 20px 1fr;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 22px;
+}
+.script-example code {
+  font-size: 11px;
+  color: #95837a;
+  line-height: 1.9;
+}
+.script-example > span {
+  color: var(--coral);
+  transform: rotate(-90deg);
+}
+blockquote {
+  margin: 0;
+}
+.script-example blockquote {
+  font-size: 15px;
+  line-height: 1.7;
+}
+.script-example strong {
+  color: var(--coral);
+  font-weight: 500;
+}
+.sentence-example {
+  font-size: 24px;
+  line-height: 1.4;
+  margin-bottom: 20px;
+  letter-spacing: -0.025em;
+}
+.tour-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.tour-controls span {
+  font: 8px var(--mono);
+  border: 1px solid #735045;
+  border-radius: 3px;
+  padding: 7px;
+  color: var(--coral);
+}
+@media (max-width: 760px) {
+  .tour {
+    padding-block: 60px;
+  }
+  .tour-layout {
+    grid-template-columns: 1fr;
+    gap: 25px;
+  }
+  .tour-steps > button {
+    padding: 15px;
+  }
+  .tour-panel {
+    padding: 24px;
+    min-height: 340px;
+  }
+  .tour-panel h3 {
+    font-size: 24px;
+  }
+  .tour-stage-head {
+    padding: 16px;
+    font-size: 8px;
+  }
+  .tour-bottom {
+    padding: 16px;
+  }
+  .session-example {
+    padding: 12px;
+    gap: 10px;
+  }
+  .session-example strong {
+    font-size: 11px;
+  }
+  .session-example small {
+    font-size: 8px;
+  }
+  .script-example {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .script-example > span {
+    transform: none;
+  }
+  .signal-orbit {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    top: -10px;
+  }
+  .motion-toggle {
+    bottom: 10px;
+    right: 10px;
+  }
+  .entrance-brand img {
+    width: 65px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .entrance {
+    display: none !important;
+  }
+  .product-window {
+    will-change: auto;
+  }
+  .button,
+  .feature-card::before,
+  .tour-steps > button {
+    transition: none;
+  }
+}

@@ -1,0 +1,7 @@
+GSAP 3.13.0 and ScrollTrigger 3.13.0
+Copyright GreenSock, Inc. All rights reserved.
+Original minified distributions (license headers preserved):
+https://registry.npmjs.org/gsap/-/gsap-3.13.0.tgz
+License and terms: https://gsap.com/standard-license/
+Documentation: https://gsap.com/docs/v3/
+These files are third-party code, not covered by SpeakHarness's MIT license.

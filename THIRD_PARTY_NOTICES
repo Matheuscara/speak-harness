@@ -35,3 +35,9 @@ Models are not committed to this repository. Users download them on demand:
 
 - The logo and icon in assets/ were created specifically for SpeakHarness and
   are licensed under the repository's MIT License.
+
+- Website only: GSAP 3.13.0 and ScrollTrigger 3.13.0, copyright GreenSock, Inc.
+  Distributed under the GSAP Standard License, not the repository's MIT License.
+  https://gsap.com/standard-license/
+  Original distribution headers are preserved in site/vendor/; source package
+  and documentation are recorded in site/vendor/NOTICE.txt.
