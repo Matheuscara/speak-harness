@@ -96,8 +96,8 @@ jobs:
         timeout-minutes: 30
         run: bun test/platform-smoke.ts
 
-      - name: Audio output tests
-        run: bun test test/audio/output.test.ts
+      - name: Cross-platform audio and control tests
+        run: bun test test/audio/output.test.ts test/core/paths.test.ts test/control/control.test.ts test/integrations/omp.test.ts test/engine/client.test.ts
 
       - name: Linux display server
         if: matrix.platform == 'linux'
@@ -118,13 +118,21 @@ jobs:
         env:
           # Ad-hoc macOS signature on pull requests too (no secrets involved); Apple Silicon needs one.
           CSC_FOR_PULL_REQUEST: "true"
-          # Optional real signing/notarization; empty secrets keep ad-hoc (macOS) / unsigned (Windows) builds.
-          CSC_LINK: ${{ matrix.platform == 'mac' && secrets.MAC_CSC_LINK || matrix.platform == 'win' && secrets.WIN_CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.MAC_CSC_KEY_PASSWORD || matrix.platform == 'win' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
-          APPLE_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_ID || '' }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'mac' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_TEAM_ID || '' }}
-        run: npx electron-builder --config electron-builder.config.cjs --publish never --${{ matrix.platform }} --${{ matrix.arch }}
+          # A blank CSC_LINK is interpreted as the current directory by electron-builder, not as
+          # "unsigned". Keep optional credentials in inert names until they actually exist.
+          SPEAKH_SIGNING_LINK: ${{ matrix.platform == 'mac' && secrets.MAC_CSC_LINK || matrix.platform == 'win' && secrets.WIN_CSC_LINK || '' }}
+          SPEAKH_SIGNING_PASSWORD: ${{ matrix.platform == 'mac' && secrets.MAC_CSC_KEY_PASSWORD || matrix.platform == 'win' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+          SPEAKH_APPLE_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_ID || '' }}
+          SPEAKH_APPLE_PASSWORD: ${{ matrix.platform == 'mac' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          SPEAKH_APPLE_TEAM: ${{ matrix.platform == 'mac' && secrets.APPLE_TEAM_ID || '' }}
+        run: |
+          if [ -n "$SPEAKH_SIGNING_LINK" ]; then
+            export CSC_LINK="$SPEAKH_SIGNING_LINK" CSC_KEY_PASSWORD="$SPEAKH_SIGNING_PASSWORD"
+          fi
+          if [ -n "$SPEAKH_APPLE_ID" ]; then
+            export APPLE_ID="$SPEAKH_APPLE_ID" APPLE_APP_SPECIFIC_PASSWORD="$SPEAKH_APPLE_PASSWORD" APPLE_TEAM_ID="$SPEAKH_APPLE_TEAM"
+          fi
+          npx electron-builder --config electron-builder.config.cjs --publish never --${{ matrix.platform }} --${{ matrix.arch }}
 
       # The checks below run the installed artifacts, not the build tree: deb into /opt (root-owned, sandbox
       # via its postinst), NSIS silently into the user profile, the DMG mounted read-only.
