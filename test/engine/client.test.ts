@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createEngineClient, VoiceNotInstalledError } from "../../src/engine/client.ts";
 import { decodePcm, encodePcm } from "../../src/engine/protocol.ts";
@@ -113,6 +116,40 @@ describe("engine client", () => {
   test("a missing node binary fails with a readable error", async () => {
     const engine = client({ nodePath: "/nonexistent/node" });
     await expect(engine.synthesize(say("x"))).rejects.toThrow(/Cannot start the TTS worker: .*Node\.js >= 22\.18/);
+  });
+
+  describe("SPEAKH_NODE_BINARY", () => {
+    const saved = process.env.SPEAKH_NODE_BINARY;
+    let dir: string | undefined;
+    afterEach(() => {
+      if (saved === undefined) delete process.env.SPEAKH_NODE_BINARY;
+      else process.env.SPEAKH_NODE_BINARY = saved;
+      if (dir) rmSync(dir, { recursive: true, force: true });
+      dir = undefined;
+    });
+
+    test.skipIf(process.platform === "win32")("runs the worker on the configured Node binary instead of PATH's", async () => {
+      const node = Bun.which("node");
+      if (!node) throw new Error("these tests need Node.js on PATH");
+      dir = mkdtempSync(join(tmpdir(), "speakh-node-"));
+      const wrapper = join(dir, "bundled-node");
+      writeFileSync(wrapper, `#!/bin/sh\ntouch "${dir}/used"\nexec "${node}" "$@"\n`);
+      chmodSync(wrapper, 0o755);
+      process.env.SPEAKH_NODE_BINARY = wrapper;
+
+      expect((await client().synthesize(say("olá"))).sampleRate).toBe(22050);
+      expect(existsSync(join(dir, "used"))).toBe(true);
+    });
+
+    test("an explicit nodePath wins; a missing configured binary is named in the error", async () => {
+      process.env.SPEAKH_NODE_BINARY = "/nonexistent/bundled-node";
+      await expect(client().synthesize(say("x"))).rejects.toThrow(
+        /Cannot start the TTS worker: "\/nonexistent\/bundled-node" \(from SPEAKH_NODE_BINARY\) was not found/,
+      );
+      const node = Bun.which("node");
+      if (!node) throw new Error("these tests need Node.js on PATH");
+      expect((await client({ nodePath: node }).synthesize(say("olá"))).sampleRate).toBe(22050);
+    });
   });
 
   test("close() rejects pending work and later calls", async () => {

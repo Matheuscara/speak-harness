@@ -5,20 +5,35 @@
 // must not import anything from the SpeakHarness install.
 import { createHash } from "node:crypto";
 import { createConnection } from "node:net";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { homedir, tmpdir } from "node:os";
+import { posix, win32 } from "node:path";
 
 export const SPEAK_COMMAND = "speak-text";
 /** The core rejects larger payloads; longer replies are cut rather than dropped. */
 export const MAX_MARKDOWN_CHARS = 100_000;
 const TIMEOUT_MS = 2_500;
 
-/** The `current` control socket; mirrors `paths.runtimeDir()` in src/core/paths.ts. */
-export function controlSocketPath(env = process.env) {
+/**
+ * The control endpoint of the running SpeakHarness: the per-user named pipe on Windows, the `current` socket elsewhere.
+ * Mirrors `resolvePaths(...).control` in src/core/paths.ts.
+ */
+export function controlSocketPath(
+  env = process.env,
+  platform = process.platform,
+  home = homedir(),
+) {
+  if (platform === "win32") {
+    const profile = win32.normalize(home).replace(/\\+$/, "").toLowerCase();
+    const user = createHash("sha256")
+      .update(profile)
+      .digest("hex")
+      .slice(0, 16);
+    return `\\\\.\\pipe\\speak-harness-${user}`;
+  }
   const base =
     env.XDG_RUNTIME_DIR ||
-    join(tmpdir(), `speak-harness-${process.getuid?.() ?? "user"}`);
-  return join(base, "speak-harness", "current");
+    posix.join(tmpdir(), `speak-harness-${process.getuid?.() ?? "user"}`);
+  return posix.join(base, "speak-harness", "current");
 }
 
 /** The reply text of a finished assistant message: text blocks only (no thinking, no tool calls). */

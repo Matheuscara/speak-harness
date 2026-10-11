@@ -35,25 +35,31 @@ Coding agents return long answers full of headings, links, tables and code. Send
 - **Switch languages automatically.** English goes to local Kokoro; Brazilian Portuguese goes to local Piper. Detection runs per paragraph, not once for the entire answer.
 - **Stay in your workflow.** Follow an already-open OMP, Pi, Codex or Claude Code session by reading its local transcript; no need to restart the harness.
 - **Study by listening.** Repeat a sentence, slow it down, pause for shadowing and save useful phrases.
-- **Choose your surface.** Use the graphical dashboard in your browser, the OpenTUI reader, a headless follower or a one-shot file reader.
+- **Choose your surface.** Use the native desktop window (Windows, Linux or macOS), the same graphical dashboard in your browser, the OpenTUI reader, a headless follower or a one-shot file reader.
 
 The interface, controls and documentation are in English. This does not change the language of your transcripts: pt-BR text is still spoken in Portuguese.
 
 ## Quick start
 
+### Desktop installers (no Bun or Node.js setup)
+
+Download the installer for your CPU and operating system from [GitHub Releases](https://github.com/Matheuscara/speak-harness/releases/latest): **Windows x64** (`SpeakHarness-Setup-*.exe`), **Linux x64/ARM64** (`.deb` for Debian/Ubuntu or `.AppImage` for other glibc desktops), or **macOS Apple Silicon/Intel** (`.dmg`). On Windows, run the installer and launch SpeakHarness from Start; on macOS, drag SpeakHarness into Applications; on Linux, install the `.deb` or make the AppImage executable and run it. The desktop window starts the same loopback-only dashboard as `speakh web`, using bundled Bun, Node.js and native synthesis libraries. You can still use the browser without installing Electron.
+
+The installers are built on each native CPU/OS runner. The [desktop build workflow](https://github.com/Matheuscara/speak-harness/actions/workflows/desktop.yml) checks the installed package, its dashboard window, and local English/pt-BR voice synthesis before attaching it to a release. The first use downloads voice models (approximately **305 MB for Kokoro q4** and **63 MB for Piper Faber**) into your user cache; your transcripts remain local. Packages are currently **unsigned/not notarized** without maintainer signing credentials: Windows may show SmartScreen and macOS Gatekeeper may require opening the app explicitly in Privacy & Security. Linux needs a graphical session and a working system audio player (PipeWire, PulseAudio, ALSA or ffplay); the desktop package does not configure your speakers.
+
 ### Nix (recommended on NixOS)
 
 ```sh
-nix profile add github:Matheuscara/speak-harness/v0.1.6
+nix profile add github:Matheuscara/speak-harness/v0.2.0
 speakh setup       # download the default local voices once
 speakh web         # open the graphical dashboard
 ```
 
-On Linux, the package also adds **SpeakHarness** (graphical dashboard) and **SpeakHarness Terminal** (OpenTUI in Alacritty) to the application menu. For a one-off run without installing: `nix run github:Matheuscara/speak-harness/v0.1.6 -- web`. Use the untagged `github:Matheuscara/speak-harness` flake only if you want the latest `main` instead of a pinned release.
+On Linux, the Nix package also adds **SpeakHarness** (browser dashboard) and **SpeakHarness Terminal** (OpenTUI in Alacritty) to the application menu. For a one-off run without installing: `nix run github:Matheuscara/speak-harness/v0.2.0 -- web`. Use the untagged `github:Matheuscara/speak-harness` flake only if you want the latest `main` instead of a pinned release.
 
 ### From source
 
-Requires **Bun 1.3.14+**, **Node.js 22.18+** for the synthesis subprocess, and an audio player on your PATH (`pw-play`, `paplay`, `aplay`, `afplay` or `ffplay`).
+Requires **Bun 1.3.14+** and **Node.js 22.18+** for the synthesis subprocess. For speaker playback, Linux needs `pw-play`, `paplay`, `aplay` or `ffplay` on PATH; macOS uses `afplay`; Windows uses the built-in PowerShell audio player (or `ffplay.exe`). The browser dashboard and model synthesis can run without a physical speaker.
 
 ```sh
 git clone https://github.com/Matheuscara/speak-harness.git
@@ -78,7 +84,7 @@ speakh integrate omp
 speakh daemon
 ```
 
-`speakh daemon` is the audio owner when no SpeakHarness interface is open. If `speakh web` or the TUI is already running, keep that one instance instead of starting a second audio owner. The extension sends only final assistant text through a local user-owned Unix socket; thinking, tool output and subagent replies are not spoken. A missing SpeakHarness instance never blocks the chat. Remove `~/.omp/agent/extensions/speak-harness.js` to uninstall the integration.
+`speakh daemon` is the audio owner when no SpeakHarness interface is open. If `speakh web`, the desktop app or the TUI is already running, keep that one instance instead of starting a second audio owner. The extension sends only final assistant text over a local user-owned Unix socket (or a per-user named pipe on Windows); thinking, tool output and subagent replies are not spoken. A missing SpeakHarness instance never blocks the chat. Remove `~/.omp/agent/extensions/speak-harness.js` to uninstall the integration.
 
 ## What it does
 
@@ -129,7 +135,7 @@ In wrap mode, `Ctrl+G` followed by a key sends one reader command. `Ctrl+G →` 
 
 ## Configuration
 
-Settings are stored in `~/.config/speak-harness/config.toml` (or `$XDG_CONFIG_HOME/speak-harness/config.toml`). Changes made in the UI are saved and applied live. For example:
+Settings are stored in `~/.config/speak-harness/config.toml` (or `$XDG_CONFIG_HOME/speak-harness/config.toml`) on Linux/macOS and `%APPDATA%\speak-harness\config.toml` on Windows. Changes made in the UI are saved and applied live. For example:
 
 ```toml
 [voices]
@@ -147,7 +153,7 @@ auto_read = false
 tables = "summary"
 ```
 
-Audio remains local. Saved study phrases live in `~/.local/share/speak-harness/phrases.md`; diagnostics live in `~/.local/state/speak-harness/speakh.log`.
+Audio remains local. On Linux/macOS, saved study phrases live in `~/.local/share/speak-harness/phrases.md` and diagnostics in `~/.local/state/speak-harness/speakh.log` (or the corresponding XDG directories). On Windows, phrases are in `%APPDATA%\speak-harness\phrases.md`, while the model cache and diagnostics are under `%LOCALAPPDATA%\speak-harness`. The desktop lifecycle log is available through its **Open log folder** button.
 
 ## Privacy and security
 
@@ -155,7 +161,7 @@ SpeakHarness reads harness session files **without writing to them**. Synthesis,
 
 ## Status, contributing and license
 
-SpeakHarness is an early public release. It has been exercised on **NixOS x86_64**; the flake also evaluates on Linux ARM64 and macOS ARM64, but those targets have not been run here. Transcript formats can change between harness versions. Please [open an issue](https://github.com/Matheuscara/speak-harness/issues) with a scrubbed sample if an adapter stops recognizing your sessions, or send a PR with a fixture and a behavioral test.
+SpeakHarness is an early public release. Browser mode and local English/pt-BR synthesis have been exercised on **NixOS x86_64** and **Debian x64**; the Linux x64 desktop AppImage/window has been exercised locally. Other CPU/OS combinations are checked by the [native desktop workflow](https://github.com/Matheuscara/speak-harness/actions/workflows/desktop.yml); consult its result and the available release assets rather than assuming your target is verified. Audio samples and installed-window rendering are checked in CI, but physical speakers and signing/notarization are not. The packages target glibc Linux desktops rather than Alpine/musl; Windows ARM64 is not packaged. Transcript formats can change between harness versions. Please [open an issue](https://github.com/Matheuscara/speak-harness/issues) with a scrubbed sample if an adapter stops recognizing your sessions, or send a PR with a fixture and a behavioral test.
 
 ```sh
 bun test

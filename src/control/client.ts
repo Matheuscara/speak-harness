@@ -1,7 +1,6 @@
 import { createConnection } from "node:net";
 import { join } from "node:path";
-import { paths } from "../core/paths.ts";
-import { CURRENT_LINK, liveSockets } from "./server.ts";
+import { CURRENT_LINK, controlEndpoint, liveSockets } from "./server.ts";
 
 class NotListening extends Error {}
 
@@ -31,26 +30,32 @@ async function request(path: string, id: string, args: string[], timeoutMs: numb
 }
 
 /**
- * Sends one command to the running instance: the `current` socket link first, then any other running
- * instance (newest first). Throws with the server's error.
+ * Sends one command to the running instance: the per-user pipe (Windows), or the `current` socket link then any other
+ * running instance, newest first (POSIX). Throws with the server's error.
  */
 export async function sendControlCommand(
   id: string,
   args: string[] = [],
-  options: { dir?: string; timeoutMs?: number } = {},
+  options: { dir?: string; pipe?: string; timeoutMs?: number } = {},
 ): Promise<void> {
-  const dir = options.dir ?? paths.runtimeDir();
-  const candidates = [CURRENT_LINK, ...(await liveSockets(dir))];
+  const endpoint = controlEndpoint(options);
+  const candidates =
+    "pipe" in endpoint
+      ? [endpoint.pipe]
+      : [CURRENT_LINK, ...(await liveSockets(endpoint.dir))].map((name) => join(endpoint.dir, name));
   let line: string | undefined;
-  for (const name of candidates) {
+  for (const path of candidates) {
     try {
-      line = await request(join(dir, name), id, args, options.timeoutMs ?? 10_000);
+      line = await request(path, id, args, options.timeoutMs ?? 10_000);
       break;
     } catch (error) {
       if (!(error instanceof NotListening)) throw error;
     }
   }
-  if (line === undefined) throw new Error(`No running speakh instance (no control socket in ${dir})`);
+  if (line === undefined) {
+    const where = "pipe" in endpoint ? `control pipe ${endpoint.pipe} is not served` : `no control socket in ${endpoint.dir}`;
+    throw new Error(`No running speakh instance (${where})`);
+  }
   const reply: unknown = JSON.parse(line);
   if (typeof reply !== "object" || reply === null || !("ok" in reply)) throw new Error(`Unexpected reply: ${line}`);
   if (reply.ok !== true) throw new Error("error" in reply && typeof reply.error === "string" ? reply.error : `"${id}" failed`);

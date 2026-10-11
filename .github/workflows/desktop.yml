@@ -1,0 +1,224 @@
+name: Desktop installers
+
+# Each installer is built and checked on a native runner for its OS/CPU: the bundled Bun, Node and
+# native modules (onnxruntime-node, sharp) are host-specific, so nothing is cross-compiled.
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - "desktop/**"
+      - ".github/workflows/desktop.yml"
+      - "src/**"
+      - "assets/**"
+      - "package.json"
+      - "bun.lock"
+      - "test/platform-smoke.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x64 (AppImage, deb)
+            runner: ubuntu-24.04
+            platform: linux
+            arch: x64
+            installers: |
+              desktop/dist/*.AppImage
+              desktop/dist/*.deb
+          - name: Linux arm64 (AppImage, deb)
+            runner: ubuntu-24.04-arm
+            platform: linux
+            arch: arm64
+            installers: |
+              desktop/dist/*.AppImage
+              desktop/dist/*.deb
+          - name: Windows x64 (NSIS)
+            runner: windows-2025
+            platform: win
+            arch: x64
+            installers: desktop/dist/SpeakHarness-Setup-*.exe
+          - name: macOS arm64 (DMG)
+            runner: macos-15
+            platform: mac
+            arch: arm64
+            installers: desktop/dist/*.dmg
+          - name: macOS x64 (DMG)
+            runner: macos-15-intel
+            platform: mac
+            arch: x64
+            installers: desktop/dist/*.dmg
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.2"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Tag matches package version
+        if: github.ref_type == 'tag'
+        run: |
+          expected="v$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$expected" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json version ($expected)"
+            exit 1
+          fi
+
+      - name: Install SpeakHarness dependencies
+        run: bun install --frozen-lockfile
+
+      # Real loopback dashboard + English Kokoro and pt-BR Piper synthesis on this OS/CPU. The voices it
+      # downloads stay in the user cache and are reused by the packaged-runtime check below. CI has no
+      # speaker: audio is verified as generated samples/WAV bytes, never as audible playback.
+      - name: Platform smoke (web dashboard and local synthesis)
+        timeout-minutes: 30
+        run: bun test/platform-smoke.ts
+
+      - name: Audio output tests
+        run: bun test test/audio/output.test.ts
+
+      - name: Linux display server
+        if: matrix.platform == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb
+
+      - name: Install desktop build tools
+        working-directory: desktop
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+        run: npm ci
+
+      - name: Stage bundled runtime
+        working-directory: desktop
+        run: npm run stage
+
+      - name: Build installers
+        working-directory: desktop
+        env:
+          # Ad-hoc macOS signature on pull requests too (no secrets involved); Apple Silicon needs one.
+          CSC_FOR_PULL_REQUEST: "true"
+          # Optional real signing/notarization; empty secrets keep ad-hoc (macOS) / unsigned (Windows) builds.
+          CSC_LINK: ${{ matrix.platform == 'mac' && secrets.MAC_CSC_LINK || matrix.platform == 'win' && secrets.WIN_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.MAC_CSC_KEY_PASSWORD || matrix.platform == 'win' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'mac' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_TEAM_ID || '' }}
+        run: npx electron-builder --config electron-builder.config.cjs --publish never --${{ matrix.platform }} --${{ matrix.arch }}
+
+      # The checks below run the installed artifacts, not the build tree: deb into /opt (root-owned, sandbox
+      # via its postinst), NSIS silently into the user profile, the DMG mounted read-only.
+      - name: Install the built installer
+        id: installed
+        run: |
+          case "${{ matrix.platform }}" in
+            linux)
+              sudo apt-get install -y ./desktop/dist/*.deb
+              echo "executable=/opt/SpeakHarness/speak-harness-desktop" >> "$GITHUB_OUTPUT"
+              echo "resources=/opt/SpeakHarness/resources" >> "$GITHUB_OUTPUT"
+              ;;
+            win)
+              installers=(desktop/dist/SpeakHarness-Setup-*.exe)
+              pwsh -NoProfile -Command "Start-Process -FilePath '$(cygpath -w "${installers[0]}")' -ArgumentList '/S' -Wait"
+              installed=("$(cygpath -u "$LOCALAPPDATA")"/Programs/*/SpeakHarness.exe)
+              exe="${installed[0]}"
+              test -f "$exe"
+              echo "executable=$(cygpath -m "$exe")" >> "$GITHUB_OUTPUT"
+              echo "resources=$(cygpath -m "$(dirname "$exe")/resources")" >> "$GITHUB_OUTPUT"
+              ;;
+            mac)
+              mount="$RUNNER_TEMP/speakh-dmg"
+              hdiutil attach -nobrowse -readonly -mountpoint "$mount" desktop/dist/*.dmg
+              echo "executable=$mount/SpeakHarness.app/Contents/MacOS/SpeakHarness" >> "$GITHUB_OUTPUT"
+              echo "resources=$mount/SpeakHarness.app/Contents/Resources" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Installed runtime smoke (bundled Bun, Node worker, synthesis, clean quit)
+        working-directory: desktop
+        timeout-minutes: 15
+        run: node scripts/smoke.mjs runtime --resources "${{ steps.installed.outputs.resources }}" --voice kokoro:af_heart --voice piper:pt_BR-faber-medium
+
+      - name: Installed window smoke (dashboard renders in the app window)
+        working-directory: desktop
+        timeout-minutes: 10
+        run: |
+          if [ "${{ matrix.platform }}" = linux ]; then
+            xvfb-run -a node scripts/smoke.mjs window --executable "${{ steps.installed.outputs.executable }}"
+          else
+            node scripts/smoke.mjs window --executable "${{ steps.installed.outputs.executable }}"
+          fi
+
+      # Same payload through AppRun (environment cleanup, automatic --no-sandbox where user namespaces are blocked).
+      - name: AppImage window smoke
+        if: matrix.platform == 'linux'
+        working-directory: desktop
+        timeout-minutes: 10
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: |
+          appimages=("$PWD"/dist/*.AppImage)
+          appimage="${appimages[0]}"
+          chmod +x "$appimage"
+          xvfb-run -a node scripts/smoke.mjs window --executable "$appimage"
+
+      - name: Detach DMG
+        if: always() && matrix.platform == 'mac' && steps.installed.outcome != 'skipped'
+        run: hdiutil detach "$RUNNER_TEMP/speakh-dmg" || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: speakharness-${{ matrix.platform }}-${{ matrix.arch }}
+          path: ${{ matrix.installers }}
+          if-no-files-found: error
+          compression-level: 0
+
+  release:
+    name: Attach installers to the release
+    needs: build
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: speakharness-*
+          path: installers
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: installers
+        run: sha256sum -- * > SHA256SUMS-desktop.txt && cat SHA256SUMS-desktop.txt
+
+      # Attaches to an existing release; a missing one is created as a draft for a human to publish.
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --draft --title "$TAG" \
+              --notes "Desktop installers for SpeakHarness $TAG (Windows x64, Linux x64/arm64, macOS arm64/x64)."
+          fi
+          gh release upload "$TAG" installers/* --repo "$GITHUB_REPOSITORY" --clobber

@@ -14,7 +14,7 @@ export { VoiceNotInstalledError };
 export interface EngineClientOptions {
   /** Model cache root (default `paths.cacheDir()`). */
   cacheDir?: string;
-  /** Node.js ≥ 22.18 binary (default `node` from PATH). */
+  /** Node.js ≥ 22.18 binary (default `$SPEAKH_NODE_BINARY`, e.g. the desktop app's bundled Node, else `node` from PATH). */
   nodePath?: string;
   /** Worker script (default `./worker.ts`); tests substitute a fake worker. */
   workerPath?: string;
@@ -41,7 +41,8 @@ const STDERR_TAIL_CHARS = 4000;
 const DEFAULT_WORKER = fileURLToPath(new URL("./worker.ts", import.meta.url));
 
 export function createEngineClient(options: EngineClientOptions = {}): EngineClient {
-  const nodePath = options.nodePath ?? "node";
+  const fromEnv = options.nodePath === undefined && Boolean(process.env.SPEAKH_NODE_BINARY);
+  const nodePath = options.nodePath ?? (process.env.SPEAKH_NODE_BINARY || "node");
   const workerPath = options.workerPath ?? DEFAULT_WORKER;
   const cacheDir = options.cacheDir ?? paths.cacheDir();
   let worker: WorkerProcess | undefined;
@@ -80,7 +81,7 @@ export function createEngineClient(options: EngineClientOptions = {}): EngineCli
     const child = spawn(
       nodePath,
       ["--disable-warning=ExperimentalWarning", "--experimental-strip-types", workerPath, "--cache-dir", cacheDir],
-      { stdio: ["pipe", "pipe", "pipe"] },
+      { stdio: ["pipe", "pipe", "pipe"], windowsHide: true },
     );
     const closedSignal = Promise.withResolvers<void>();
     const proc: WorkerProcess = { child, pending: new Map(), stderr: "", closed: closedSignal.promise };
@@ -99,10 +100,10 @@ export function createEngineClient(options: EngineClientOptions = {}): EngineCli
     });
     child.stdin.on("error", () => {}); // EPIPE after a crash; reported through "close"
     child.on("error", (error: NodeJS.ErrnoException) => {
-      const reason =
-        error.code === "ENOENT"
-          ? `"${nodePath}" was not found; the TTS worker needs Node.js >= 22.18 on PATH`
-          : error.message;
+      const missing = fromEnv
+        ? `"${nodePath}" (from SPEAKH_NODE_BINARY) was not found; it must point at Node.js >= 22.18`
+        : `"${nodePath}" was not found; the TTS worker needs Node.js >= 22.18 on PATH`;
+      const reason = error.code === "ENOENT" ? missing : error.message;
       fail(proc, new Error(`Cannot start the TTS worker: ${reason}`));
       closedSignal.resolve();
     });

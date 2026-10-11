@@ -1,14 +1,17 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import { installOmpExtension, OMP_EXTENSION_FILE } from "../../src/cli/main.ts";
 import { startControlServer } from "../../src/control/server.ts";
 import { createCommandRegistry } from "../../src/core/commands.ts";
+import { resolvePaths } from "../../src/core/paths.ts";
 import type * as OmpExtension from "../../src/integrations/omp.js";
 import type { OmpSessionStopEvent } from "../../src/integrations/omp.js";
 import {
+  controlSocketPath,
   createStopHandler,
   sendControlRequest,
 } from "../../src/integrations/omp.js";
@@ -87,7 +90,54 @@ test("installs a copy, is idempotent, updates its own file and refuses foreign o
   expect(await readFile(target, "utf8")).toBe("export default () => {};\n");
 });
 
-test("the installed extension hands only final reply text to the running speakh, once per reply", async () => {
+test("the extension reaches the control endpoint SpeakHarness serves, on Windows and POSIX", () => {
+  for (const env of [{}, { XDG_RUNTIME_DIR: "/run/user/1000", APPDATA: "C:\\Roaming" }]) {
+    for (const home of ["C:\\Users\\Ana Maria", "d:/profiles/bob/"]) {
+      expect(resolvePaths("win32", env, home).control).toEqual({
+        pipe: controlSocketPath(env, "win32", home),
+      });
+    }
+    const socket = controlSocketPath(env, "linux", "/home/ana");
+    expect(posix.basename(socket)).toBe("current");
+    expect(resolvePaths("linux", env, "/home/ana").control).toEqual({
+      dir: posix.dirname(socket),
+    });
+  }
+});
+
+test("the extension hands replies to a SpeakHarness serving the per-user pipe", async () => {
+  // A real named pipe on Windows; elsewhere a socket file stands in for it.
+  const pipe =
+    process.platform === "win32"
+      ? `\\\\.\\pipe\\speakh-omp-test-${randomUUID()}`
+      : join(dir, "control.pipe");
+  const received: string[][] = [];
+  const registry = createCommandRegistry();
+  registry.register({
+    id: "speak-text",
+    title: "Speak text",
+    group: "playback",
+    run: (args) => void received.push(args),
+  });
+  const server = await startControlServer(registry, { pipe });
+  try {
+    const logs: string[] = [];
+    await createStopHandler({ path: pipe, log: (line) => logs.push(line) })(
+      stopEvent(),
+    );
+    expect(logs).toEqual([]);
+    expect(received).toEqual([
+      ["omp:s1:0:1700", "# Done\n\nAll tests pass.\n\nNext step.", "s1"],
+    ]);
+  } finally {
+    await server.close();
+  }
+});
+
+// The remaining tests use socket files and the `current` symlink: the POSIX endpoint.
+const posixOnly = test.skipIf(process.platform === "win32");
+
+posixOnly("the installed extension hands only final reply text to the running speakh, once per reply", async () => {
   const agentDir = join(dir, "agent");
   const { path } = await installOmpExtension(agentDir);
   process.env.XDG_RUNTIME_DIR = dir;
@@ -161,7 +211,7 @@ test("the installed extension hands only final reply text to the running speakh,
   }
 });
 
-test("an absent, silent or aborted speakh never blocks the chat or leaks the reply", async () => {
+posixOnly("an absent, silent or aborted speakh never blocks the chat or leaks the reply", async () => {
   const logs: string[] = [];
   const handler = createStopHandler({
     path: join(dir, "missing.sock"),
@@ -199,7 +249,7 @@ test("an absent, silent or aborted speakh never blocks the chat or leaks the rep
   }
 });
 
-test("a refusal from speakh is reported without the reply text", async () => {
+posixOnly("a refusal from speakh is reported without the reply text", async () => {
   const registry = createCommandRegistry();
   await mkdir(join(dir, "rt"), { recursive: true });
   const server = await startControlServer(registry, { dir: join(dir, "rt") });

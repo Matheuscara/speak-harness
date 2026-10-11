@@ -25,6 +25,8 @@ export interface ControlRequestOptions {
 
 export function controlSocketPath(
   env?: Record<string, string | undefined>,
+  platform?: NodeJS.Platform,
+  home?: string,
 ): string;
 export function replyMarkdown(
   message: OmpAssistantMessage | undefined,

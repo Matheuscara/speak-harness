@@ -1,0 +1,34 @@
+{
+  "name": "speak-harness-desktop",
+  "productName": "SpeakHarness",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SpeakHarness desktop window: the local listening dashboard with its own Bun and Node runtimes.",
+  "type": "module",
+  "main": "src/main.mjs",
+  "license": "MIT AND GPL-3.0-or-later",
+  "author": {
+    "name": "Matheuscara",
+    "email": "61706310+Matheuscara@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/Matheuscara/speak-harness#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Matheuscara/speak-harness.git"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "stage": "node scripts/prepare.mjs",
+    "start": "electron .",
+    "pack": "node scripts/prepare.mjs && electron-builder --config electron-builder.config.cjs --publish never --dir",
+    "dist": "node scripts/prepare.mjs && electron-builder --config electron-builder.config.cjs --publish never",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3",
+    "sharp": "0.35.5"
+  }
+}
