@@ -200,7 +200,7 @@ h3 {
 .hero:before {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: 0 calc(50% - 50vw);
   pointer-events: none;
   background: radial-gradient(ellipse at 75% 37%, #812f1b26, transparent 55%);
   z-index: -1;

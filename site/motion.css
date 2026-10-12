@@ -9,13 +9,18 @@ body::after {
   background-image: url("grain.svg");
   background-size: 180px 180px;
 }
+html,
+body {
+  overflow-x: clip;
+}
 .hero {
   isolation: isolate;
-  overflow: clip;
+  overflow-x: visible;
+  overflow-y: clip;
 }
 .hero-grid {
   position: absolute;
-  inset: 0;
+  inset: 0 calc(50% - 50vw);
   z-index: -1;
   pointer-events: none;
   background:
