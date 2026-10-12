@@ -14,22 +14,47 @@
       content="Hear your coding agents. Keep your eyes on the code. Local speech for OMP, Pi, Codex and Claude Code on Windows, Linux and macOS."
     />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SpeakHarness" />
+    <meta property="og:url" content="https://speakharness.com/" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="pt_BR" />
+    <meta property="og:image" content="https://speakharness.com/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta
-      property="og:image"
-      content="https://matheuscara.github.io/speak-harness/assets/dashboard-en.webp"
+      property="og:image:alt"
+      content="SpeakHarness: Read with your ears. Your coding agents write. SpeakHarness speaks."
     />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://speakharness.com/og.png" />
+    <meta
+      name="twitter:image:alt"
+      content="SpeakHarness: Read with your ears. Your coding agents write. SpeakHarness speaks."
+    />
     <title>SpeakHarness — Your coding agents write. SpeakHarness speaks.</title>
+    <link rel="canonical" href="https://speakharness.com/" />
+    <link rel="alternate" hreflang="en" href="https://speakharness.com/" />
+    <link
+      rel="alternate"
+      hreflang="pt-BR"
+      href="https://speakharness.com/pt/"
+    />
+    <link
+      rel="alternate"
+      hreflang="x-default"
+      href="https://speakharness.com/"
+    />
     <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css?v=i18n-1" />
     <link rel="stylesheet" href="motion.css?v=handoff-1" />
     <link rel="stylesheet" href="demo.css?v=handoff-1" />
     <script src="vendor/gsap.min.js" defer></script>
     <script src="vendor/ScrollTrigger.min.js" defer></script>
-    <script src="motion.js?v=handoff-1" defer></script>
-    <script src="demo.js?v=handoff-1" defer></script>
+    <script src="motion.js?v=i18n-1" defer></script>
+    <script src="demo.js?v=i18n-1" defer></script>
     <script src="app.js" defer></script>
-    <script src="film.js" defer></script>
+    <script src="film.js?v=i18n-1" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -56,9 +81,24 @@
           >GitHub <span aria-hidden="true">↗</span></a
         >
       </nav>
-      <a class="button button-small" href="#download"
-        >Get the desktop app <span aria-hidden="true">↓</span></a
-      >
+      <div class="header-actions">
+        <nav class="lang-switch" aria-label="Language">
+          <a
+            href="./"
+            hreflang="en"
+            lang="en"
+            aria-label="English"
+            aria-current="page"
+            >EN</a
+          >
+          <a href="pt/" hreflang="pt-BR" lang="pt-BR" aria-label="Português"
+            >PT</a
+          >
+        </nav>
+        <a class="button button-small" href="#download"
+          >Get the desktop app <span aria-hidden="true">↓</span></a
+        >
+      </div>
     </header>
 
     <main id="main">

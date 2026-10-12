@@ -14,6 +14,57 @@
   const stages = [...root.querySelectorAll("[data-demo-stage]")];
   const wave = root.querySelector("#demo-wave");
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+  // Sample paths are relative to the site root, where this script lives, so /pt/ shares them.
+  const siteRoot = new URL(".", document.currentScript.src);
+  const text = document.documentElement.lang.startsWith("pt")
+    ? {
+        hear: "Ouça a voz real",
+        playLabel: (label) => `Tocar a amostra ${label}`,
+        ready: "Áudio real gerado previamente. Aperte o play para ouvir.",
+        loading: "Carregando a amostra de voz…",
+        playFailed:
+          "Não foi possível tocar esta amostra. Aperte o play de novo ou abra o arquivo de áudio abaixo.",
+        pause: "Pausar a voz",
+        pauseLabel: "Pausar a amostra de voz",
+        playing: (label) => `Tocando ${label}.`,
+        resume: "Continuar a voz",
+        resumeLabel: "Continuar a amostra de voz",
+        paused: "Pausado. Continue quando quiser.",
+        again: "Ouvir de novo",
+        againLabel: "Tocar a amostra de novo",
+        ended:
+          "Essa foi a voz real. Experimente o outro idioma ou baixe o app.",
+        buffering: "Carregando a amostra de voz…",
+        loadFailed:
+          "Não foi possível carregar o áudio. Use os links diretos das amostras abaixo ou tente de novo.",
+        unavailable:
+          "Use o player de áudio acima ou os links diretos das amostras abaixo. A prévia interativa não está disponível.",
+        of: (current, total) => `${current} de ${total}`,
+      }
+    : {
+        hear: "Hear the real voice",
+        playLabel: (label) => `Play ${label} sample`,
+        ready: "Real pre-generated audio. Press Play to listen.",
+        loading: "Loading the voice sample…",
+        playFailed:
+          "Could not play this sample. Try Play again or open the audio file below.",
+        pause: "Pause voice",
+        pauseLabel: "Pause voice sample",
+        playing: (label) => `Playing ${label}.`,
+        resume: "Resume voice",
+        resumeLabel: "Resume voice sample",
+        paused: "Paused. Continue whenever you are ready.",
+        again: "Listen again",
+        againLabel: "Replay voice sample",
+        ended:
+          "That was the real voice. Try the other language, or get the app.",
+        buffering: "Buffering the voice sample…",
+        loadFailed:
+          "Audio could not load. Use the direct sample links below, or try again.",
+        unavailable:
+          "Use the audio player above or the direct sample links below. The interactive preview is unavailable.",
+        of: (current, total) => `${current} of ${total}`,
+      };
   let clips;
   let sample;
   let flow;
@@ -24,6 +75,10 @@
     !reduced.matches && document.documentElement.dataset.motion !== "off";
   const clock = (value) =>
     `${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, "0")}`;
+  function setPlay(label, icon, ariaLabel) {
+    play.innerHTML = `${label} <span aria-hidden="true">${icon}</span>`;
+    play.setAttribute("aria-label", ariaLabel);
+  }
   function stage(index) {
     stages.forEach((node, i) =>
       i === index
@@ -125,7 +180,7 @@
     position.value = String(ratio * 100);
     position.setAttribute(
       "aria-valuetext",
-      `${clock(audio.currentTime)} of ${clock(duration)}`,
+      text.of(clock(audio.currentTime), clock(duration)),
     );
     time.textContent = `${clock(audio.currentTime)} / ${clock(duration)}`;
     wave.style.setProperty("--wave-remaining", `${(1 - ratio) * 100}%`);
@@ -144,7 +199,7 @@
     audio.pause();
     stopFrames();
     sample = clips.find((clip) => clip.id === id);
-    audio.src = sample.src;
+    audio.src = new URL(sample.src, siteRoot).href;
     audio.setAttribute("aria-label", sample.label);
     audio.playbackRate = Number(speed.value);
     root.querySelector("#demo-prompt").textContent = sample.prompt;
@@ -165,9 +220,8 @@
         String(button.dataset.demoLang === id),
       ),
     );
-    play.innerHTML = 'Hear the real voice <span aria-hidden="true">▶</span>';
-    play.setAttribute("aria-label", `Play ${sample.label} sample`);
-    status.textContent = "Real pre-generated audio. Press Play to listen.";
+    setPlay(text.hear, "▶", text.playLabel(sample.label));
+    status.textContent = text.ready;
     drawWave();
     progress();
     if (started) handoff();
@@ -180,20 +234,22 @@
       audio.pause();
       return;
     }
-    status.textContent = "Loading the voice sample…";
+    status.textContent = text.loading;
     try {
       await audio.play();
     } catch (error) {
       if (requestVersion !== version || error.name === "AbortError") return;
-      status.textContent =
-        "Could not play this sample. Try Play again or open the audio file below.";
+      status.textContent = text.playFailed;
     }
   }
   async function init() {
-    const response = await fetch("audio/samples.json");
+    const response = await fetch(new URL("audio/samples.json", siteRoot));
     if (!response.ok) throw new Error("Sample metadata unavailable");
     clips = await response.json();
-    select("en");
+    const initial = langButtons.find(
+      (button) => button.getAttribute("aria-pressed") === "true",
+    );
+    select(initial?.dataset.demoLang ?? "en");
     root.classList.add("demo-ready");
     root.querySelector(".demo-player").hidden = false;
     langButtons.forEach((button) => {
@@ -217,35 +273,30 @@
       }
     });
     audio.addEventListener("playing", () => {
-      play.innerHTML = 'Pause voice <span aria-hidden="true">Ⅱ</span>';
-      play.setAttribute("aria-label", "Pause voice sample");
-      status.textContent = `Playing ${sample.label}.`;
+      setPlay(text.pause, "Ⅱ", text.pauseLabel);
+      status.textContent = text.playing(sample.label);
       stopFrames();
       tick();
     });
     audio.addEventListener("pause", () => {
       stopFrames();
-      play.innerHTML = 'Resume voice <span aria-hidden="true">▶</span>';
-      play.setAttribute("aria-label", "Resume voice sample");
-      status.textContent = "Paused. Continue whenever you are ready.";
+      setPlay(text.resume, "▶", text.resumeLabel);
+      status.textContent = text.paused;
     });
     audio.addEventListener("ended", () => {
       stopFrames();
       progress();
-      play.innerHTML = 'Listen again <span aria-hidden="true">↺</span>';
-      play.setAttribute("aria-label", "Replay voice sample");
-      status.textContent =
-        "That was the real voice. Try the other language, or get the app.";
+      setPlay(text.again, "↺", text.againLabel);
+      status.textContent = text.ended;
     });
     audio.addEventListener("timeupdate", progress);
     audio.addEventListener("loadedmetadata", progress);
     audio.addEventListener("waiting", () => {
-      if (!audio.paused) status.textContent = "Buffering the voice sample…";
+      if (!audio.paused) status.textContent = text.buffering;
     });
     audio.addEventListener("error", () => {
       stopFrames();
-      status.textContent =
-        "Audio could not load. Use the direct sample links below, or try again.";
+      status.textContent = text.loadFailed;
     });
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -277,7 +328,6 @@
     });
   }
   init().catch(() => {
-    status.textContent =
-      "Use the audio player above or the direct sample links below. The interactive preview is unavailable.";
+    status.textContent = text.unavailable;
   });
 })();

@@ -1,6 +1,9 @@
 // GSAP 3.13 + ScrollTrigger; native scrolling, no loading gate or autoplay audio.
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const motionButton = document.querySelector(".motion-toggle");
+const motionLabels = document.documentElement.lang.startsWith("pt")
+  ? { on: "Pausar animações", off: "Animações desligadas" }
+  : { on: "Pause motion", off: "Motion off" };
 let motionPaused = false;
 let motionContext;
 let introPlayed = false;
@@ -9,7 +12,7 @@ function configureMotion() {
   motionContext?.revert();
   document.querySelector(".entrance").style.display = "none";
   const enabled = !reduceMotion.matches && !motionPaused;
-  motionButton.textContent = enabled ? "Pause motion" : "Motion off";
+  motionButton.textContent = enabled ? motionLabels.on : motionLabels.off;
   motionButton.setAttribute("aria-pressed", String(!enabled));
   document.documentElement.dataset.motion = enabled ? "on" : "off";
   document.dispatchEvent(

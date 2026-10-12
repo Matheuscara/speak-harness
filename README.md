@@ -39,7 +39,7 @@
 </p>
 
 <p align="center">
-  <a href="https://matheuscara.github.io/speak-harness/">Website</a> · <a href="#quick-start">Install</a> · <a href="#how-it-compares">Compare</a> · <a href="#supported-harnesses">Supported agents</a> · <a href="#privacy-and-security">Privacy</a>
+  <a href="https://speakharness.com/">Website</a> · <a href="#quick-start">Install</a> · <a href="#how-it-compares">Compare</a> · <a href="#supported-harnesses">Supported agents</a> · <a href="#privacy-and-security">Privacy</a>
 </p>
 
 ## Keep your eyes on the code
@@ -264,9 +264,9 @@ SpeakHarness reads harness session files **without writing to them**. Synthesis,
 
 ## Status, contributing and license
 
-The public [website](https://matheuscara.github.io/speak-harness/) is a static landing page, not an online instance of the app. Its source is in `site/`; `.github/workflows/pages.yml` publishes it with the shared screenshots from `assets/` on changes to `main`. No domain purchase, frontend build or paid hosting is required.
+The public [website](https://speakharness.com/) (also in [Brazilian Portuguese](https://speakharness.com/pt/)) is a static landing page, not an online instance of the app. Its source is in `site/`; on changes to `main`, Cloudflare Workers copies it with the shared screenshots from `assets/` into `_site/` and serves it (`wrangler.jsonc`), and `.github/workflows/pages.yml` publishes the same files to GitHub Pages. No frontend build is required.
 
-Try the [interactive handoff and voice samples](https://matheuscara.github.io/speak-harness/#tour): an illustrative Claude Code reply flows into the listening desk, where you can hear actual pre-generated Kokoro English and Piper pt-BR recordings. Sample text, voice IDs and measured waveform data live in `site/audio/samples.json`; provenance is in `site/audio/NOTICE.txt`. The website does not connect to your agent, record your microphone or run the synthesis model.
+Try the [interactive handoff and voice samples](https://speakharness.com/#tour): an illustrative Claude Code reply flows into the listening desk, where you can hear actual pre-generated Kokoro English and Piper pt-BR recordings. Sample text, voice IDs and measured waveform data live in `site/audio/samples.json`; provenance is in `site/audio/NOTICE.txt`. The website does not connect to your agent, record your microphone or run the synthesis model.
 
 SpeakHarness is an early public release. The [native installer run](https://github.com/Matheuscara/speak-harness/actions/runs/38112663697) passed on **Windows x64, Linux x64/ARM64, and macOS Intel/Apple Silicon**: on each runner it built and installed the desktop app, loaded its window, synthesized English and pt-BR speech through the bundled Node worker, and exited cleanly. The Linux AppImage also opened locally on **NixOS x86_64** through `appimage-run`. Browser mode remains a secondary option and was exercised on **NixOS x86_64** and **Debian x64**. CI checks audio samples and rendering, **not audible playback through physical speakers**; signing/notarization also require maintainer credentials. Packages target glibc Linux desktops, not Alpine/musl; Windows ARM64 is not packaged. Transcript formats can change between harness versions. Please [open an issue](https://github.com/Matheuscara/speak-harness/issues) with a scrubbed sample if an adapter stops recognizing your sessions, or send a PR with a fixture and a behavioral test.
 

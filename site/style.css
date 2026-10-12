@@ -189,6 +189,27 @@ h3 {
 .header nav a:hover {
   color: var(--ink);
 }
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+.header .lang-switch {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.header .lang-switch a {
+  padding: 3px 9px;
+  font: 11px var(--mono);
+  letter-spacing: 0.08em;
+}
+.header .lang-switch a + a {
+  border-left: 1px solid var(--line);
+}
+.header .lang-switch a[aria-current="page"] {
+  color: var(--ink);
+}
 .hero {
   display: grid;
   grid-template-columns: 1fr 1.08fr;
@@ -219,6 +240,10 @@ h3 {
   line-height: 0.97;
   letter-spacing: -0.065em;
   margin-bottom: 30px;
+}
+/* "OS OUVIDOS." is wider than "YOUR EARS."; scale it so it wraps no earlier than English. */
+.hero h1:lang(pt) .headline-line {
+  font-size: 0.92em;
 }
 .hero-lead {
   font-size: 23px;
@@ -931,6 +956,12 @@ dialog > img {
   }
   .header nav {
     display: none;
+  }
+  .header-actions {
+    gap: 8px;
+  }
+  .header .lang-switch a {
+    padding: 3px 7px;
   }
   .header .button {
     font-size: 10px;

@@ -134,4 +134,4 @@ Multi-key sequences (`g g`) and a leader key are supported through `@opentui/key
 
 ## Domain
 
-`speakharness.com` had no registration in RDAP when planned. Not purchased.
+The website is served at [speakharness.com](https://speakharness.com/), with a Brazilian Portuguese version at `/pt/`.
