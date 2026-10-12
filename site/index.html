@@ -29,6 +29,7 @@
     <script src="motion.js?v=handoff-1" defer></script>
     <script src="demo.js?v=handoff-1" defer></script>
     <script src="app.js" defer></script>
+    <script src="film.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -147,6 +148,37 @@
         <span>ALREADY IN YOUR WORKFLOW</span><strong>Oh My Pi</strong
         ><strong>Pi</strong><strong>Codex</strong><strong>Claude Code</strong>
       </div>
+
+      <section class="section-wrap film" id="film" aria-labelledby="film-title">
+        <div class="film-copy">
+          <p class="eyebrow">20 SECONDS / NO WORDS</p>
+          <h2 id="film-title">
+            Text goes in.<br /><span class="accent">Sound comes out.</span>
+          </h2>
+          <p>
+            Markdown, symbols and code blocks flow from your agent into
+            SpeakHarness and leave as a calm, readable voice.
+          </p>
+          <button class="film-sound" type="button" aria-pressed="false" hidden>
+            Sound on
+          </button>
+        </div>
+        <div class="film-frame">
+          <video
+            class="film-video"
+            src="media/speakharness-film.mp4"
+            poster="media/speakharness-film.jpg"
+            width="1080"
+            height="1080"
+            muted
+            loop
+            playsinline
+            preload="metadata"
+            controls
+            aria-label="Animated film: text characters flow from a coding agent into SpeakHarness and turn into a sound wave"
+          ></video>
+        </div>
+      </section>
 
       <section class="section-wrap tour" id="tour" aria-labelledby="tour-title">
         <div class="section-heading">
