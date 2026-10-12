@@ -1,0 +1,9 @@
+{
+  // Cloudflare Workers static assets: the build command assembles the site into _site/.
+  "name": "speak-harness",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./_site",
+    "not_found_handling": "404-page"
+  }
+}

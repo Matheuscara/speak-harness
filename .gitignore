@@ -2,3 +2,4 @@ node_modules/
 *.tmp.*
 result
 result-*
+_site/
